@@ -101,6 +101,7 @@ export function POSApp() {
         {screen === "staff"     && <StaffScreen />}
         {screen === "dashboard" && <DashboardScreen />}
         {screen === "ai"        && <AIScreen />}
+        {screen === "nutrition" && <NutritionScreen />}
         {screen === "settings"  && <SettingsScreen />}
       </main>
     </div>
