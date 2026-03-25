@@ -29,6 +29,7 @@ const NAV: { key: Screen; label: string }[] = [
   { key: "ai",        label: "🤖 AI"         },
   { key: "nutrition", label: "🥗 โภชนาการ"   },
   { key: "kiosk",     label: "🖥️ Kiosk"      },
+  { key: "omni",      label: "🌐 Omnichannel" },
   { key: "settings",  label: "⚙️"            },
 ];
 
