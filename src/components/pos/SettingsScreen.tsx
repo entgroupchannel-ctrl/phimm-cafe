@@ -8,7 +8,7 @@ const SECTIONS: SettingSection[] = [
   {
     title: "🏪 ข้อมูลร้าน",
     items: [
-      { label: "ชื่อร้าน",                 value: "กินดี สุขุมวิท",                  type: "text" },
+      { label: "ชื่อร้าน",                 value: "Phimm Cafe",                       type: "text" },
       { label: "ที่อยู่",                   value: "123/45 ถ.สุขุมวิท แขวงคลองเตย",  type: "text" },
       { label: "เบอร์โทร",                 value: "02-123-4567",                      type: "text" },
       { label: "เวลาเปิด-ปิด",             value: "10:00 - 22:00",                    type: "text" },

@@ -52,7 +52,7 @@ function WelcomeScreen({ onStart }: { onStart: (type: "dinein" | "takeaway") => 
         <div className="text-[80px] leading-none mb-4 drop-shadow-sm">🍽️</div>
         <h1 className="text-[38px] font-black text-foreground leading-tight mb-2 text-balance">ยินดีต้อนรับ</h1>
         <p className="text-[16px] text-muted-foreground mb-1">
-          ร้าน <span className="font-bold text-primary">กินดี สุขุมวิท</span>
+          ร้าน <span className="font-bold text-primary">Phimm Cafe</span>
         </p>
         <p className="text-[14px] text-muted-foreground mb-10 max-w-sm">
           สั่งอาหาร · จ่ายเงิน · รับอาหาร<br />ทั้งหมดจากหน้าจอนี้ — ไม่ต้องรอพนักงาน
@@ -554,12 +554,12 @@ export function KioskScreen() {
       {/* Kiosk top bar */}
       <div className="px-5 py-2.5 bg-card border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[14px] shadow-primary">P</div>
-          <span className="text-[15px] font-extrabold text-gradient-primary">POSAI Kiosk</span>
+          <img src="/src/assets/phimm-logo.png" alt="Phimm Cafe" className="w-8 h-8 object-contain" />
+          <span className="text-[15px] font-extrabold text-gradient-primary">Phimm Cafe</span>
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">Self-Service</span>
         </div>
         <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
-          <span>🏪 กินดี สุขุมวิท</span>
+          <span>☕ Phimm Cafe</span>
           {step !== STEPS.WELCOME && (
             <button onClick={reset}
               className="px-3 py-1 rounded-lg text-[11px] font-semibold border border-danger/30 bg-danger/5 text-danger hover:bg-danger/10 transition-colors">

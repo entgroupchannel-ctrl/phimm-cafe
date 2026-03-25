@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 // ── Config ─────────────────────────────────────────────────
 const BASE_URL = "https://posai.app/kiosk";
-const RESTAURANT_NAME = "กินดี สุขุมวิท";
-const RESTAURANT_LOGO = "🍜";
+const RESTAURANT_NAME = "Phimm Cafe";
+const RESTAURANT_LOGO = "☕";
 
 // ── Table layout ───────────────────────────────────────────
 type Zone = "หน้าร้าน" | "ระเบียง" | "VIP" | "เคาน์เตอร์";
