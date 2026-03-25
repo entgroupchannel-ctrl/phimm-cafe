@@ -10,10 +10,11 @@ import { StaffScreen } from "./pos/StaffScreen";
 import { SettingsScreen } from "./pos/SettingsScreen";
 import { AIScreen } from "./pos/AIScreen";
 import { NutritionScreen } from "./pos/NutritionScreen";
+import { KioskScreen } from "./pos/KioskScreen";
 import { menuItems } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
 
-type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "settings";
+type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "settings";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "order",     label: "🛒 ออเดอร์"   },
