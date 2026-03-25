@@ -31,6 +31,7 @@ const NAV: { key: Screen; label: string }[] = [
   { key: "nutrition", label: "🥗 โภชนาการ"   },
   { key: "kiosk",     label: "🖥️ Kiosk"      },
   { key: "omni",      label: "🌐 Omnichannel" },
+  { key: "qr",        label: "📲 QR โต๊ะ"     },
   { key: "settings",  label: "⚙️"            },
 ];
 
@@ -109,6 +110,7 @@ export function POSApp() {
         {screen === "nutrition" && <NutritionScreen />}
         {screen === "kiosk"     && <KioskScreen />}
         {screen === "omni"      && <OmnichannelScreen />}
+        {screen === "qr"        && <QRGeneratorScreen />}
         {screen === "settings"  && <SettingsScreen />}
       </main>
     </div>
