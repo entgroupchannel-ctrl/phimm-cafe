@@ -664,111 +664,118 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
         </div>
       )}
 
-      {/* ── Right: Cart ── */}
-      <div className="w-[280px] bg-surface border-l border-border flex flex-col p-4 shadow-[-4px_0_20px_-4px_rgba(0,0,0,0.05)] shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[14px] font-bold text-foreground">🧾 ออเดอร์ปัจจุบัน</span>
-          <div className="flex items-center gap-2">
-            <POSBadge color="accent">{cart.length} รายการ</POSBadge>
+      {/* ── Right: Cart panel ── */}
+      <div className="w-[272px] bg-white border-l border-border flex flex-col shadow-[-8px_0_24px_-4px_rgba(0,0,0,0.04)] shrink-0">
+
+        {/* Cart header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/60">
+          <div>
+            <span className="text-[13px] font-bold text-foreground">ออเดอร์ปัจจุบัน</span>
+            <span className="text-[11px] text-muted-foreground ml-1.5">โต๊ะ {activeTable}</span>
           </div>
+          <span className="bg-primary/10 text-primary text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-primary/20">
+            {cart.length} รายการ
+          </span>
         </div>
 
         {/* Merged tables banner */}
         {isMergedTable && (
-          <div className="mb-3 px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/25 animate-fade-in">
+          <div className="mx-3 mt-3 px-3 py-2.5 rounded-2xl bg-primary/6 border border-primary/20 animate-fade-in">
             <div className="flex items-center justify-between mb-1.5">
-              <div className="text-[12px] font-bold text-primary flex items-center gap-1.5">
+              <div className="text-[11px] font-bold text-primary flex items-center gap-1">
                 🔗 รวมโต๊ะ: {activeTable} + {mergedWith.join(", ")}
               </div>
               <button onClick={handleUnmerge}
-                className="text-[10px] text-muted-foreground hover:text-danger transition-colors">
-                ✕ ยกเลิกรวม
-              </button>
+                className="text-[10px] text-muted-foreground hover:text-danger transition-colors">ยกเลิก</button>
             </div>
             {mergedTables.map((t) => (
-              <div key={t.id} className="flex justify-between text-[11px] text-muted-foreground">
-                <span>โต๊ะ {t.id} ({STATUS_LABEL[t.status]})</span>
+              <div key={t.id} className="flex justify-between text-[10px] text-muted-foreground">
+                <span>โต๊ะ {t.id}</span>
                 <span className="font-mono tabular-nums">฿{(t.orderAmt ?? 0).toLocaleString()}</span>
               </div>
             ))}
-            <div className="mt-1.5 pt-1.5 border-t border-primary/20 flex justify-between text-[12px] font-bold">
-              <span className="text-primary">ยอดรวมทุกโต๊ะ</span>
+            <div className="mt-1.5 pt-1.5 border-t border-primary/15 flex justify-between text-[11px] font-semibold">
+              <span className="text-primary">ยอดรวม</span>
               <span className="font-mono text-primary tabular-nums">฿{mergedBillTotal.toLocaleString()}</span>
             </div>
           </div>
         )}
 
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
           {cart.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-[13px]">
-              <div className="text-3xl mb-2 opacity-40">🛒</div>
-              แตะเมนูเพื่อเพิ่มออเดอร์
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="text-4xl mb-3 opacity-20">🛒</div>
+              <div className="text-[12px] font-medium">แตะเมนูเพื่อเพิ่มออเดอร์</div>
             </div>
           ) : (
-            cart.map((item) => (
-              <div key={item.id} className="flex items-center gap-2.5 py-2.5 border-b border-border/60 animate-fade-in">
-                <span className="text-xl">{item.img}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold truncate text-foreground">{item.name}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">฿{item.price} × {item.qty}</div>
+            <div className="space-y-0.5">
+              {cart.map((item) => (
+                <div key={item.id} className="flex items-center gap-2.5 py-2.5 border-b border-border/40 animate-fade-in">
+                  <span className="text-xl leading-none">{item.img}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-semibold truncate text-foreground">{item.name}</div>
+                    <div className="text-[11px] text-muted-foreground font-mono tabular-nums">฿{item.price} × {item.qty}</div>
+                  </div>
+                  {/* Stepper */}
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => removeFromCart(item.id)}
+                      className="w-6 h-6 rounded-full bg-muted border border-border text-muted-foreground flex items-center justify-center text-sm font-bold hover:bg-danger/10 hover:text-danger hover:border-danger/30 transition-colors select-none">−</button>
+                    <span className="font-mono font-bold text-[12px] w-4 text-center tabular-nums text-foreground">{item.qty}</span>
+                    <button onClick={() => addToCart(item)}
+                      className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shadow-[0_1px_4px_hsl(var(--primary)/0.35)] select-none">+</button>
+                  </div>
+                  <div className="font-mono font-bold text-[12px] tabular-nums text-foreground min-w-[42px] text-right">
+                    ฿{item.price * item.qty}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => removeFromCart(item.id)}
-                    className="w-6 h-6 rounded-lg border border-border bg-muted text-muted-foreground flex items-center justify-center text-xs hover:border-border-light hover:text-foreground transition-colors">−</button>
-                  <span className="font-mono font-bold text-[12px] w-4 text-center tabular-nums text-foreground">{item.qty}</span>
-                  <button onClick={() => addToCart(item)}
-                    className="w-6 h-6 rounded-lg gradient-primary text-white flex items-center justify-center text-xs shadow-primary">+</button>
-                </div>
-                <div className="font-mono font-bold text-[12px] text-accent min-w-[44px] text-right tabular-nums">
-                  ฿{item.price * item.qty}
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-border space-y-2.5 mt-1">
-          <div className="flex justify-between text-[12px] text-muted-foreground">
-            <span>รวม {totalQty} ชิ้น</span>
-            <span>ก่อน VAT</span>
+        <div className="px-4 pt-3 pb-4 border-t border-border/60 space-y-3">
+
+          {/* Subtotals */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>{totalQty} รายการ · ก่อน VAT</span>
+              <span className="font-mono tabular-nums">฿{total.toLocaleString()}</span>
+            </div>
+            {isMergedTable && (
+              <div className="flex justify-between text-[11px] text-primary font-semibold pt-0.5 border-t border-primary/15">
+                <span>ยอดรวมทุกโต๊ะ 🔗</span>
+                <span className="font-mono tabular-nums">฿{mergedBillTotal.toLocaleString()}</span>
+              </div>
+            )}
           </div>
 
-          {/* Current table subtotal */}
+          {/* Grand total */}
           <div className="flex justify-between items-baseline">
-            <span className="text-[13px] text-muted-foreground">{isMergedTable ? "โต๊ะ " + activeTable : "ยอดรวม"}</span>
-            <span className="font-mono text-[16px] font-bold text-foreground tabular-nums">฿{total.toLocaleString()}</span>
+            <span className="text-[13px] font-semibold text-foreground">ยอดรวม</span>
+            <span className="font-mono text-[24px] font-bold tabular-nums text-foreground">
+              ฿{(isMergedTable ? mergedBillTotal : total).toLocaleString()}
+            </span>
           </div>
 
-          {/* Merged grand total */}
-          {isMergedTable && (
-            <div className="flex justify-between items-baseline pt-1.5 border-t border-primary/20">
-              <span className="text-[15px] font-bold text-primary">ยอดรวมทั้งหมด 🔗</span>
-              <span className="font-mono text-[22px] font-extrabold text-primary tabular-nums">฿{mergedBillTotal.toLocaleString()}</span>
-            </div>
-          )}
-
-          {!isMergedTable && (
-            <div className="flex justify-between items-baseline">
-              <span className="text-[15px] font-bold text-foreground">ยอดรวม</span>
-              <span className="font-mono text-[22px] font-extrabold text-accent tabular-nums">฿{total.toLocaleString()}</span>
-            </div>
-          )}
-
+          {/* Apple-style pay button */}
           <button onClick={onPay}
-            className="w-full py-3 rounded-xl gradient-primary text-white font-bold text-[14px] shadow-primary hover:shadow-primary-lg transition-shadow">
-            💳 ชำระเงิน {isMergedTable ? `฿${mergedBillTotal.toLocaleString()}` : ""}
+            className="w-full h-12 rounded-2xl bg-primary text-white font-semibold text-[15px] tracking-[-0.01em] transition-all active:scale-[0.98] select-none
+              shadow-[0_4px_16px_hsl(var(--primary)/0.35),inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-primary/90 hover:shadow-[0_6px_20px_hsl(var(--primary)/0.42)]">
+            💳 ชำระเงิน{isMergedTable ? ` ฿${mergedBillTotal.toLocaleString()}` : ""}
           </button>
+
+          {/* Transfer / Merge — small outline pills */}
           <div className="flex gap-2">
             <button
               onClick={handleStartTransfer}
               disabled={cart.length === 0}
               className={cn(
-                "flex-1 py-2 rounded-xl border text-[12px] font-semibold transition-all",
+                "flex-1 h-8 rounded-full border text-[11px] font-semibold transition-all select-none",
                 cart.length > 0
-                  ? "border-warning/40 bg-warning/8 text-warning hover:bg-warning/15"
-                  : "border-border bg-muted text-muted-foreground/40 cursor-not-allowed"
+                  ? "border-warning/40 bg-warning/6 text-warning hover:bg-warning/12 active:scale-[0.97]"
+                  : "border-border bg-muted/50 text-muted-foreground/40 cursor-not-allowed"
               )}
             >
               🔄 ย้ายโต๊ะ
@@ -777,10 +784,10 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
               onClick={handleStartMerge}
               disabled={activeFloor?.status !== "occupied"}
               className={cn(
-                "flex-1 py-2 rounded-xl border text-[12px] font-semibold transition-all",
+                "flex-1 h-8 rounded-full border text-[11px] font-semibold transition-all select-none",
                 activeFloor?.status === "occupied"
-                  ? "border-primary/40 bg-primary/8 text-primary hover:bg-primary/15"
-                  : "border-border bg-muted text-muted-foreground/40 cursor-not-allowed"
+                  ? "border-primary/35 bg-primary/6 text-primary hover:bg-primary/12 active:scale-[0.97]"
+                  : "border-border bg-muted/50 text-muted-foreground/40 cursor-not-allowed"
               )}
             >
               🔗 รวมโต๊ะ
