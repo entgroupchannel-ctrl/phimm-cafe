@@ -152,6 +152,45 @@ function NavBar({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) 
   );
 }
 
+// ── Dark Mode Toggle ───────────────────────────────────────
+function DarkModeToggle() {
+  const [dark, setDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  };
+  return (
+    <button
+      onClick={toggle}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className={cn(
+        "relative w-[52px] h-[28px] rounded-full border transition-all duration-300 select-none shrink-0",
+        dark
+          ? "bg-primary border-primary/40 shadow-[0_2px_8px_hsl(var(--primary)/0.35)]"
+          : "bg-muted border-border shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]"
+      )}
+    >
+      {/* Track icons */}
+      <span className={cn(
+        "absolute top-1/2 -translate-y-1/2 text-[11px] transition-opacity duration-200",
+        dark ? "left-2 opacity-100" : "left-2 opacity-0"
+      )}>🌙</span>
+      <span className={cn(
+        "absolute top-1/2 -translate-y-1/2 text-[11px] transition-opacity duration-200",
+        dark ? "right-2 opacity-0" : "right-2 opacity-100"
+      )}>☀️</span>
+      {/* Thumb */}
+      <span className={cn(
+        "absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-all duration-300",
+        dark ? "left-[26px]" : "left-[3px]"
+      )} />
+    </button>
+  );
+}
+
 // ── App ────────────────────────────────────────────────────
 export function POSApp() {
   const [screen, setScreen] = useState<Screen>("order");
