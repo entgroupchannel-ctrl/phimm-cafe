@@ -98,6 +98,7 @@ export function POSApp() {
         {screen === "crm"       && <CRMScreen />}
         {screen === "staff"     && <StaffScreen />}
         {screen === "dashboard" && <DashboardScreen />}
+        {screen === "ai"        && <AIScreen />}
         {screen === "settings"  && <SettingsScreen />}
       </main>
     </div>
