@@ -614,7 +614,9 @@ function ChannelMgmtTab() {
                       💡 คาดว่าจะเพิ่มรายได้ ~฿{((ch as any).potential / 1000).toFixed(0)}K/เดือน
                     </div>
                   )}
-                  <button className="px-5 py-2 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                  <button
+                    onClick={() => ch.key === "shopee" ? setShowShopeeModal(true) : undefined}
+                    className="px-5 py-2 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
                     style={{ background: info.hex, boxShadow: `0 4px 16px ${info.hex}40` }}>
                     🔗 เชื่อมต่อ {info.name}
                   </button>
