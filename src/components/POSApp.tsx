@@ -8,10 +8,11 @@ import { MenuMgmtScreen } from "./pos/MenuMgmtScreen";
 import { CRMScreen } from "./pos/CRMScreen";
 import { StaffScreen } from "./pos/StaffScreen";
 import { SettingsScreen } from "./pos/SettingsScreen";
+import { AIScreen } from "./pos/AIScreen";
 import { menuItems } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
 
-type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "settings";
+type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "settings";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "order",     label: "🛒 ออเดอร์"   },
@@ -22,6 +23,7 @@ const NAV: { key: Screen; label: string }[] = [
   { key: "crm",       label: "👥 ลูกค้า"     },
   { key: "staff",     label: "🧑‍💼 พนักงาน"  },
   { key: "dashboard", label: "📊 Dashboard"  },
+  { key: "ai",        label: "🤖 AI"         },
   { key: "settings",  label: "⚙️"            },
 ];
 
