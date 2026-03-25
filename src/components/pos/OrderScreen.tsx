@@ -12,54 +12,52 @@ interface OrderScreenProps {
 }
 
 const TABLES = ["T1", "T2", "T3", "T4", "T5", "T7"];
-const CATS = ["ทั้งหมด", "ยอดนิยม", "อาหารจานเดียว", "เครื่องดื่ม", "ของหวาน"];
+const CATS   = ["ทั้งหมด", "ยอดนิยม", "อาหารจานเดียว", "เครื่องดื่ม", "ของหวาน"];
 
 export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
-  const [activeCat, setActiveCat] = useState("ทั้งหมด");
+  const [activeCat, setActiveCat]   = useState("ทั้งหมด");
   const [activeTable, setActiveTable] = useState("T3");
 
   const filtered =
-    activeCat === "ทั้งหมด" ? menuItems
+    activeCat === "ทั้งหมด"   ? menuItems
     : activeCat === "ยอดนิยม" ? menuItems.filter((m) => m.popular)
     : menuItems.filter((m) => m.cat === activeCat);
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === item.id);
-      if (existing) return prev.map((c) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
+      const ex = prev.find((c) => c.id === item.id);
+      if (ex) return prev.map((c) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, { ...item, qty: 1 }];
     });
   };
 
-  const removeFromCart = (id: number) => {
-    setCart((prev) =>
-      prev.map((c) => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter((c) => c.qty > 0)
-    );
-  };
+  const removeFromCart = (id: number) =>
+    setCart((prev) => prev.map((c) => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter((c) => c.qty > 0));
 
-  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const total    = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
     <div className="flex flex-1 overflow-hidden">
+
       {/* ── Left: Menu ── */}
-      <div className="flex-1 flex flex-col px-6 py-5 overflow-hidden">
+      <div className="flex-1 flex flex-col px-6 py-5 overflow-hidden bg-background">
 
         {/* Table selector */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="gradient-primary px-3.5 py-1.5 rounded-lg text-sm font-bold text-white shadow-[0_4px_16px_hsl(var(--primary)/0.4)]">
+          <div className="gradient-primary px-4 py-2 rounded-xl text-[14px] font-bold text-white shadow-primary">
             โต๊ะ {activeTable}
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             {TABLES.map((t) => (
               <button
                 key={t}
                 onClick={() => setActiveTable(t)}
                 className={cn(
-                  "w-9 h-9 rounded-lg text-[11px] font-semibold border transition-all duration-150",
+                  "w-10 h-10 rounded-xl text-[12px] font-semibold border transition-all duration-150",
                   t === activeTable
-                    ? "border-primary/60 bg-primary/15 text-primary"
-                    : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground"
+                    ? "border-primary/40 bg-primary/8 text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.15)]"
+                    : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground shadow-card"
                 )}
               >
                 {t}
@@ -75,10 +73,10 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
               key={c}
               onClick={() => setActiveCat(c)}
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-all duration-150",
+                "px-4 py-2 rounded-xl text-[13px] font-semibold border transition-all duration-150",
                 activeCat === c
-                  ? "border-primary/50 bg-primary/12 text-primary"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border-light"
+                  ? "border-primary/40 bg-primary/8 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border-light shadow-card"
               )}
             >
               {c}
@@ -87,8 +85,10 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
         </div>
 
         {/* Menu Grid */}
-        <div className="grid gap-2.5 overflow-y-auto flex-1 scrollbar-hide pb-2"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(136px, 1fr))" }}>
+        <div
+          className="grid gap-3 overflow-y-auto flex-1 scrollbar-hide pb-2"
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}
+        >
           {filtered.map((item) => {
             const inCart = cart.find((c) => c.id === item.id);
             return (
@@ -96,27 +96,25 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
                 key={item.id}
                 onClick={() => addToCart(item)}
                 className={cn(
-                  "relative bg-card border rounded-2xl p-3.5 flex flex-col items-center gap-1.5 text-left transition-all duration-150 group",
+                  "relative bg-card border rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-150",
                   inCart
-                    ? "border-primary/60 shadow-[0_0_20px_hsl(var(--primary)/0.25)] bg-primary/5"
-                    : "border-border hover:border-border-light hover:bg-surface-hover"
+                    ? "border-primary/40 shadow-primary bg-primary/[0.03]"
+                    : "border-border hover:border-border-light hover:shadow-card-hover shadow-card"
                 )}
               >
-                {/* Cart qty badge */}
                 {inCart && (
-                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-white text-[11px] font-extrabold flex items-center justify-center shadow-[0_2px_8px_hsl(var(--primary)/0.5)] z-10">
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[11px] font-extrabold flex items-center justify-center shadow-primary z-10">
                     {inCart.qty}
                   </span>
                 )}
-                {/* Hot badge */}
                 {item.popular && (
-                  <span className="absolute top-1.5 left-1.5">
-                    <POSBadge color="warning" className="text-[9px] px-1.5 py-0">HOT</POSBadge>
+                  <span className="absolute top-2 left-2">
+                    <POSBadge color="warning" className="text-[9px] py-px px-1.5">HOT</POSBadge>
                   </span>
                 )}
-                <span className="text-4xl mt-1">{item.img}</span>
-                <span className="text-[12px] font-semibold text-center leading-tight text-foreground">{item.name}</span>
-                <span className="font-mono text-[14px] font-bold text-accent">฿{item.price}</span>
+                <span className="text-[38px] mt-1">{item.img}</span>
+                <span className="text-[13px] font-semibold text-center leading-tight text-foreground">{item.name}</span>
+                <span className="font-mono text-[15px] font-bold text-accent">฿{item.price}</span>
               </button>
             );
           })}
@@ -124,38 +122,39 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
       </div>
 
       {/* ── Right: Cart ── */}
-      <div className="w-[300px] bg-surface border-l border-border flex flex-col p-5">
+      <div className="w-[300px] bg-surface border-l border-border flex flex-col p-5 shadow-[-4px_0_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[15px] font-bold">🧾 ออเดอร์ปัจจุบัน</span>
+          <span className="text-[15px] font-bold text-foreground">🧾 ออเดอร์ปัจจุบัน</span>
           <POSBadge color="accent">{cart.length} รายการ</POSBadge>
         </div>
 
         {/* Cart items */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {cart.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
+            <div className="text-center py-12 text-muted-foreground text-[14px]">
+              <div className="text-3xl mb-3 opacity-40">🛒</div>
               แตะเมนูเพื่อเพิ่มออเดอร์
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.id} className="flex items-center gap-2.5 py-2.5 border-b border-border/50 animate-fade-in">
+              <div key={item.id} className="flex items-center gap-3 py-3 border-b border-border/60 animate-fade-in">
                 <span className="text-2xl">{item.img}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold truncate">{item.name}</div>
-                  <div className="text-[11px] text-foreground/40 font-mono">฿{item.price} × {item.qty}</div>
+                  <div className="text-[13px] font-semibold truncate text-foreground">{item.name}</div>
+                  <div className="text-[12px] text-muted-foreground font-mono">฿{item.price} × {item.qty}</div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => removeFromCart(item.id)}
-                    className="w-6 h-6 rounded-md border border-border bg-card text-muted-foreground flex items-center justify-center text-sm hover:border-border-light transition-colors"
+                    className="w-7 h-7 rounded-lg border border-border bg-muted text-muted-foreground flex items-center justify-center text-sm hover:border-border-light hover:text-foreground transition-colors"
                   >−</button>
-                  <span className="font-mono font-bold text-[13px] w-5 text-center tabular-nums">{item.qty}</span>
+                  <span className="font-mono font-bold text-[13px] w-5 text-center tabular-nums text-foreground">{item.qty}</span>
                   <button
                     onClick={() => addToCart(item)}
-                    className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center text-sm hover:bg-primary/90 transition-colors"
+                    className="w-7 h-7 rounded-lg gradient-primary text-white flex items-center justify-center text-sm shadow-primary"
                   >+</button>
                 </div>
-                <div className="font-mono font-bold text-[13px] text-accent min-w-[44px] text-right tabular-nums">
+                <div className="font-mono font-bold text-[13px] text-accent min-w-[48px] text-right tabular-nums">
                   ฿{item.price * item.qty}
                 </div>
               </div>
@@ -165,25 +164,25 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
 
         {/* Footer */}
         <div className="pt-4 border-t border-border space-y-3 mt-2">
-          <div className="flex justify-between text-[12px] text-muted-foreground">
+          <div className="flex justify-between text-[13px] text-muted-foreground">
             <span>รวม {totalQty} ชิ้น</span>
             <span>ก่อน VAT</span>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-lg font-bold">ยอดรวม</span>
+            <span className="text-[16px] font-bold text-foreground">ยอดรวม</span>
             <span className="font-mono text-[24px] font-extrabold text-accent tabular-nums">฿{total.toLocaleString()}</span>
           </div>
           <button
             onClick={onPay}
-            className="w-full py-3.5 rounded-xl gradient-primary text-white font-bold text-[15px] shadow-[0_4px_24px_hsl(var(--primary)/0.4)] hover:shadow-[0_4px_32px_hsl(var(--primary)/0.6)] transition-shadow"
+            className="w-full py-3.5 rounded-xl gradient-primary text-white font-bold text-[15px] shadow-primary hover:shadow-primary-lg transition-shadow"
           >
             💳 ชำระเงิน
           </button>
           <div className="flex gap-2">
-            <button className="flex-1 py-2.5 rounded-lg border border-border bg-card text-muted-foreground text-[12px] font-semibold hover:border-border-light hover:text-foreground transition-colors">
+            <button className="flex-1 py-2.5 rounded-xl border border-border bg-muted text-muted-foreground text-[13px] font-medium hover:border-border-light hover:text-foreground transition-colors">
               🖨 พิมพ์
             </button>
-            <button className="flex-1 py-2.5 rounded-lg border border-border bg-card text-muted-foreground text-[12px] font-semibold hover:border-border-light hover:text-foreground transition-colors">
+            <button className="flex-1 py-2.5 rounded-xl border border-border bg-muted text-muted-foreground text-[13px] font-medium hover:border-border-light hover:text-foreground transition-colors">
               📤 พักบิล
             </button>
           </div>
