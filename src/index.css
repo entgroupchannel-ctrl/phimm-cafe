@@ -75,6 +75,76 @@
     --sidebar-border:     210 14% 89%;
     --sidebar-ring:       211 100% 50%;
   }
+
+  /* ── macOS Dark Mode ── */
+  .dark {
+    /* Base surfaces */
+    --background:    220 13% 9%;         /* #141517 — macOS dark bg */
+    --surface:       220 12% 12%;        /* #1c1d21 */
+    --surface-alt:   220 11% 15%;
+    --surface-hover: 220 11% 18%;
+
+    /* Header */
+    --header:        220 13% 10%;
+    --header-fg:     220  8% 92%;
+    --header-muted:  220  8% 55%;
+
+    /* Text */
+    --foreground:       220  8% 92%;
+    --foreground-muted: 220  6% 55%;
+    --foreground-dim:   220  5% 38%;
+
+    /* Brand — same Apple blue */
+    --primary:            211 100% 50%;
+    --primary-foreground:   0   0% 100%;
+    --primary-glow:       211 100% 60%;
+
+    --accent:             211 100% 50%;
+    --accent-foreground:    0   0% 100%;
+    --accent-glow:        211 100% 60%;
+
+    /* Semantic */
+    --success:   142 55% 42%;
+    --warning:    38 88% 52%;
+    --danger:      0 68% 55%;
+    --destructive:  0 68% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Shadcn compat */
+    --card:            220 12% 12%;
+    --card-foreground: 220  8% 92%;
+    --popover:         220 12% 12%;
+    --popover-foreground: 220  8% 92%;
+    --secondary:       220 11% 16%;
+    --secondary-foreground: 220  8% 92%;
+    --muted:           220 11% 16%;
+    --muted-foreground: 220  6% 52%;
+
+    --border:       220 10% 20%;
+    --border-light: 220 10% 26%;
+    --input:        220 10% 20%;
+    --ring:         211 100% 50%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(211 100% 50%), hsl(230 100% 58%));
+    --gradient-accent:  linear-gradient(135deg, hsl(211 100% 50%), hsl(265 100% 62%));
+
+    /* Shadows — softer/darker */
+    --shadow-card:        0 1px 2px 0 rgb(0 0 0 / 0.25), 0 4px 16px -4px rgb(0 0 0 / 0.35);
+    --shadow-card-hover:  0 2px 8px 0 rgb(0 0 0 / 0.30), 0 12px 28px -8px rgb(0 0 0 / 0.40);
+    --shadow-primary:     0 4px 20px -2px rgb(0 113 255 / 0.40);
+    --shadow-primary-lg:  0 8px 32px -4px rgb(0 113 255 / 0.50);
+
+    /* Sidebar */
+    --sidebar-background: 220 13% 8%;
+    --sidebar-foreground: 220  8% 90%;
+    --sidebar-primary:    211 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:     220 11% 15%;
+    --sidebar-accent-foreground: 220  8% 90%;
+    --sidebar-border:     220 10% 18%;
+    --sidebar-ring:       211 100% 50%;
+  }
 }
 
 @layer base {
@@ -126,8 +196,18 @@
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
+  .dark .glass {
+    background: rgba(20, 21, 23, 0.75);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
   .glass-dark {
     background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: saturate(200%) blur(24px);
+    -webkit-backdrop-filter: saturate(200%) blur(24px);
+  }
+  .dark .glass-dark {
+    background: rgba(28, 29, 33, 0.92);
     backdrop-filter: saturate(200%) blur(24px);
     -webkit-backdrop-filter: saturate(200%) blur(24px);
   }
