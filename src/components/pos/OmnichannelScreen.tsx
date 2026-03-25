@@ -252,6 +252,11 @@ function OrderHubTab() {
             filter === "delivery" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:border-border-light")}>
           🛵 Delivery ทั้งหมด
         </button>
+        <button onClick={playDeliveryChime}
+          className="ml-auto px-3 py-2 rounded-xl text-[12px] font-semibold border-2 border-border text-muted-foreground hover:border-border-light whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0"
+          title="ทดสอบเสียงแจ้งเตือน">
+          🔔 ทดสอบเสียง
+        </button>
         {(Object.entries(CHANNELS) as [ChannelKey, typeof CHANNELS[ChannelKey]][]).map(([key, ch]) => {
           const count = channelCounts[key] || 0;
           if (count === 0 && !["dinein","lineman","grab"].includes(key)) return null;
