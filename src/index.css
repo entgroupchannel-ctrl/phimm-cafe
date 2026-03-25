@@ -196,8 +196,18 @@
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
+  .dark .glass {
+    background: rgba(20, 21, 23, 0.75);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
   .glass-dark {
     background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: saturate(200%) blur(24px);
+    -webkit-backdrop-filter: saturate(200%) blur(24px);
+  }
+  .dark .glass-dark {
+    background: rgba(28, 29, 33, 0.92);
     backdrop-filter: saturate(200%) blur(24px);
     -webkit-backdrop-filter: saturate(200%) blur(24px);
   }
