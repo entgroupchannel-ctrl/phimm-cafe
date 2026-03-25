@@ -154,11 +154,25 @@ function formatTime(s: number) {
   return m < 1 ? "< 1 นาที" : `${m} นาที`;
 }
 
+// ── Simulated incoming delivery orders ────────────────────
+const INCOMING_POOL: Omit<LiveOrder, "id" | "time" | "status">[] = [
+  { channel:"lineman",   table:"D9",  items:["ผัดกะเพราหมู x2","ข้าวสวย x2"],        total:196, driver:"ธนัช",  eta:"14 นาที" },
+  { channel:"grab",      table:"D10", items:["ต้มยำกุ้ง x1","ข้าวผัด x1"],           total:234, driver:"สุริยา", eta:"10 นาที" },
+  { channel:"lineman",   table:"D11", items:["ส้มตำไทย x1","ไก่ย่าง x1","โคล่า x2"], total:318, driver:"วันชัย", eta:"18 นาที" },
+  { channel:"grab",      table:"D12", items:["ข้าวมันไก่ x2","น้ำเปล่า x2"],         total:210, driver:"ปิยะ",  eta:"7 นาที"  },
+  { channel:"lineman",   table:"D13", items:["แกงเขียวหวานไก่ x1","ข้าว x1"],        total:165, driver:"ณัฐ",   eta:"11 นาที" },
+  { channel:"grab",      table:"D14", items:["หมูกะทะ Set B x1"],                    total:399, driver:"อนุชา", eta:"22 นาที" },
+];
+let _orderCounter = 259;
+
 // ── Tab 1: Unified Order Hub ──────────────────────────────
 function OrderHubTab() {
   const [filter, setFilter] = useState("all");
   const [orders, setOrders] = useState<LiveOrder[]>(INITIAL_ORDERS);
+  const [toasts, setToasts] = useState<DeliveryToast[]>([]);
+  const orderCounterRef = useRef(_orderCounter);
 
+  // Tick timer
   useEffect(() => {
     const iv = setInterval(() => {
       setOrders(prev => prev.map(o =>
@@ -166,6 +180,34 @@ function OrderHubTab() {
       ));
     }, 1000);
     return () => clearInterval(iv);
+  }, []);
+
+  // Simulate new delivery order every 15 s
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const pool = INCOMING_POOL;
+      const tpl = pool[Math.floor(Math.random() * pool.length)];
+      orderCounterRef.current += 1;
+      const newId = `#0${orderCounterRef.current}`;
+      const newOrder: LiveOrder = { ...tpl, id: newId, time: 0, status: "new" };
+      setOrders(prev => [newOrder, ...prev]);
+      const toastId = `toast-${Date.now()}`;
+      setToasts(prev => [...prev, {
+        id: toastId,
+        channel: tpl.channel,
+        orderId: newId,
+        items: tpl.items,
+        total: tpl.total,
+        driver: tpl.driver ?? "—",
+        eta: tpl.eta ?? "—",
+      }]);
+      playDeliveryChime();
+    }, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
   const active = orders.filter(o => o.status !== "served");
