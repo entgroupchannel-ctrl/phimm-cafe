@@ -234,8 +234,8 @@ export function POSApp() {
             <span className="w-1.5 h-1.5 rounded-full bg-success shadow-[0_0_5px_hsl(var(--success)/0.7)] animate-pulse-glow" />
             <span className="hidden sm:inline">ออนไลน์</span>
           </span>
-          <span className="text-[12px] font-medium text-muted-foreground hidden md:inline">Phimm Cafe</span>
           <Clock />
+          <DarkModeToggle />
         </div>
       </header>
 
