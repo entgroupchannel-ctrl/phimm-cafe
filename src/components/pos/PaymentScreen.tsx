@@ -8,20 +8,14 @@ interface PaymentScreenProps {
 }
 
 const METHODS = [
-  { key: "promptpay", label: "PromptPay", icon: "📱", color: "primary" as const },
-  { key: "cash",      label: "เงินสด",   icon: "💵", color: "success" as const },
-  { key: "card",      label: "บัตร",     icon: "💳", color: "accent"  as const },
+  { key: "promptpay", label: "PromptPay", sublabel: "QR Code",  icon: "📲" },
+  { key: "cash",      label: "เงินสด",   sublabel: "Cash",      icon: "💵" },
+  { key: "card",      label: "บัตร",     sublabel: "EDC",       icon: "💳" },
 ];
-
-const methodStyle = {
-  primary: "border-primary/30 bg-primary/6 text-primary hover:bg-primary/12 data-[active=true]:ring-primary/40",
-  success: "border-success/30 bg-success/6 text-success hover:bg-success/12 data-[active=true]:ring-success/40",
-  accent:  "border-accent/30  bg-accent/6  text-accent  hover:bg-accent/12  data-[active=true]:ring-accent/40",
-};
 
 export function PaymentScreen({ cart, onSuccess }: PaymentScreenProps) {
   const [method, setMethod] = useState("promptpay");
-  const [paid, setPaid]     = useState(false);
+  const [paid,   setPaid]   = useState(false);
 
   const total    = cart.reduce((s, c) => s + c.price * c.qty, 0) || 317;
   const totalQty = cart.reduce((s, c) => s + c.qty, 0) || 3;
@@ -33,78 +27,110 @@ export function PaymentScreen({ cart, onSuccess }: PaymentScreenProps) {
 
   return (
     <div className="flex flex-1 items-center justify-center p-8 bg-background">
-      <div className="w-[440px] bg-card border border-border rounded-3xl shadow-card overflow-hidden">
+      <div className="w-[420px] flex flex-col gap-4">
 
-        {/* Top accent bar */}
-        <div className="h-1 gradient-primary" />
-
-        <div className="p-8 text-center">
-          {paid ? (
-            <div className="animate-slide-up py-6">
-              <div className="w-20 h-20 rounded-full bg-success/10 border border-success/25 flex items-center justify-center text-4xl mx-auto mb-5 shadow-[0_0_24px_hsl(var(--success)/0.2)]">
-                ✅
-              </div>
-              <div className="text-[22px] font-bold text-foreground mb-1">ชำระเงินสำเร็จ!</div>
-              <div className="font-mono text-accent text-[30px] font-extrabold mb-2 tabular-nums">฿{total.toLocaleString()}.00</div>
-              <div className="text-muted-foreground text-[14px]">กำลังพิมพ์ใบเสร็จ…</div>
+        {paid ? (
+          /* ── Success state ── */
+          <div className="bg-white dark:bg-card rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.07),0_16px_40px_rgba(0,0,0,0.07)] p-10 text-center border border-border animate-scale-in">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center text-4xl mx-auto mb-5"
+              style={{ background: "hsl(var(--success)/0.1)", boxShadow: "0 0 32px hsl(var(--success)/0.2)" }}>
+              ✅
             </div>
-          ) : (
-            <>
-              <p className="text-[13px] text-muted-foreground font-medium mb-1">ชำระเงิน — โต๊ะ T3</p>
-              <div className="font-mono text-[44px] font-extrabold text-foreground mb-1 tabular-nums leading-none">
-                ฿{total.toLocaleString()}.00
+            <div className="text-[22px] font-bold text-foreground mb-1">ชำระเงินสำเร็จ!</div>
+            <div className="font-mono text-[32px] font-extrabold tabular-nums mb-2" style={{ color: "hsl(var(--success))" }}>
+              ฿{total.toLocaleString()}.00
+            </div>
+            <div className="text-[13px] text-muted-foreground">กำลังพิมพ์ใบเสร็จ…</div>
+          </div>
+        ) : (
+          <>
+            {/* ── Amount card ── */}
+            <div className="bg-white dark:bg-card rounded-3xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.05),0_16px_40px_rgba(0,0,0,0.06)] px-8 pt-7 pb-6 text-center">
+              <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">ยอดชำระ</p>
+              <div className="font-mono text-[52px] font-black text-foreground tabular-nums leading-none mb-1">
+                ฿{total.toLocaleString()}
+                <span className="text-[24px] font-semibold text-muted-foreground">.00</span>
               </div>
-              <p className="text-[14px] text-muted-foreground mb-7">{totalQty} รายการ · รวม VAT แล้ว</p>
+              <p className="text-[13px] text-muted-foreground mt-2">{totalQty} รายการ · รวม VAT แล้ว</p>
 
-              {/* QR mock */}
+              {/* Order items summary */}
+              {cart.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border/60 space-y-1.5 text-left">
+                  {cart.map(item => (
+                    <div key={item.id} className="flex items-center justify-between text-[12px]">
+                      <span className="text-foreground font-medium flex items-center gap-1.5">
+                        <span>{item.img}</span>{item.name}
+                        <span className="text-muted-foreground">× {item.qty}</span>
+                      </span>
+                      <span className="font-mono tabular-nums text-foreground font-semibold">฿{item.price * item.qty}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Payment method pills ── */}
+            <div className="bg-white dark:bg-card rounded-3xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.05),0_8px_24px_rgba(0,0,0,0.04)] p-5">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 px-1">วิธีชำระเงิน</p>
+              <div className="flex gap-2.5">
+                {METHODS.map(m => {
+                  const active = method === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      onClick={() => setMethod(m.key)}
+                      className={cn(
+                        "flex-1 flex flex-col items-center gap-1 py-3.5 rounded-2xl border-2 text-[12px] font-semibold transition-all duration-150 select-none active:scale-[0.97]",
+                        active
+                          ? "border-primary bg-primary/8 text-primary shadow-[0_2px_12px_hsl(var(--primary)/0.18)]"
+                          : "border-border bg-background text-muted-foreground hover:border-border-light hover:text-foreground"
+                      )}
+                    >
+                      <span className="text-[22px] leading-none">{m.icon}</span>
+                      <span className="font-bold">{m.label}</span>
+                      <span className={cn("text-[10px]", active ? "text-primary/70" : "text-muted-foreground/60")}>{m.sublabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Visual / QR card ── */}
+            <div className="bg-white dark:bg-card rounded-3xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.05),0_8px_24px_rgba(0,0,0,0.04)] px-8 py-6 flex flex-col items-center gap-3 min-h-[176px] justify-center">
               {method === "promptpay" && (
-                <div className="w-44 h-44 mx-auto mb-5 rounded-2xl bg-white border border-border shadow-card p-3 flex items-center justify-center">
-                  <div
-                    className="w-full h-full rounded-lg opacity-90"
-                    style={{ background: "repeating-conic-gradient(#111318 0% 25%, #fff 0% 50%) 0 0 / 14px 14px" }}
-                  />
-                </div>
+                <>
+                  <div className="w-36 h-36 rounded-2xl bg-white border border-border shadow-[0_1px_4px_rgba(0,0,0,0.08)] p-2.5 flex items-center justify-center">
+                    <div className="w-full h-full rounded-lg" style={{ background: "repeating-conic-gradient(#111318 0% 25%, #fff 0% 50%) 0 0 / 12px 12px" }} />
+                  </div>
+                  <p className="text-[12px] text-muted-foreground font-medium">สแกน QR Code เพื่อจ่ายผ่าน PromptPay</p>
+                </>
               )}
-              {method !== "promptpay" && (
-                <div className="h-44 flex items-center justify-center mb-5">
-                  <span className="text-[72px]">{method === "cash" ? "💵" : "💳"}</span>
-                </div>
+              {method === "cash" && (
+                <>
+                  <span className="text-[64px] leading-none">💵</span>
+                  <p className="text-[12px] text-muted-foreground font-medium">รับเงินสดและทอนเงินให้ลูกค้า</p>
+                </>
               )}
+              {method === "card" && (
+                <>
+                  <span className="text-[64px] leading-none">💳</span>
+                  <p className="text-[12px] text-muted-foreground font-medium">เสียบหรือแตะบัตรที่เครื่อง EDC</p>
+                </>
+              )}
+            </div>
 
-              <p className="text-[13px] text-muted-foreground mb-6">
-                {method === "promptpay" && "สแกน QR Code เพื่อจ่ายผ่าน PromptPay"}
-                {method === "cash"      && "รับเงินสดและทอนเงินให้ลูกค้า"}
-                {method === "card"      && "เสียบหรือแตะบัตรที่เครื่อง EDC"}
-              </p>
-
-              {/* Methods */}
-              <div className="flex gap-2.5 mb-5">
-                {METHODS.map((m) => (
-                  <button
-                    key={m.key}
-                    data-active={method === m.key}
-                    onClick={() => setMethod(m.key)}
-                    className={cn(
-                      "flex-1 py-3.5 rounded-xl border text-[13px] font-semibold transition-all",
-                      methodStyle[m.color],
-                      method === m.key && "ring-2 ring-offset-1 ring-offset-card"
-                    )}
-                  >
-                    <div className="text-xl mb-0.5">{m.icon}</div>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={handleConfirm}
-                className="w-full py-4 rounded-xl gradient-primary text-white font-bold text-[15px] shadow-primary hover:shadow-primary-lg transition-shadow"
-              >
-                ✅ ยืนยันชำระเงิน
-              </button>
-            </>
-          )}
-        </div>
+            {/* ── Confirm button ── */}
+            <button
+              onClick={handleConfirm}
+              className="w-full h-14 rounded-2xl bg-primary text-white font-semibold text-[16px] tracking-[-0.01em] select-none transition-all active:scale-[0.98]"
+              style={{ boxShadow: "0 4px 20px hsl(var(--primary)/0.38), inset 0 1px 0 rgba(255,255,255,0.18)" }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 24px hsl(var(--primary)/0.46), inset 0 1px 0 rgba(255,255,255,0.18)")}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 20px hsl(var(--primary)/0.38), inset 0 1px 0 rgba(255,255,255,0.18)")}
+            >
+              ยืนยันชำระเงิน — ฿{total.toLocaleString()}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
