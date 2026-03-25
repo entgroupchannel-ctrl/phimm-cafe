@@ -238,6 +238,7 @@ function OrderHubTab() {
 
   return (
     <div className="space-y-4">
+      <DeliveryToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Channel filter bar */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
         <button onClick={() => setFilter("all")}
