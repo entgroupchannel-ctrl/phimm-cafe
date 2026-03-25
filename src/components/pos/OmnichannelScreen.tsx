@@ -1,5 +1,109 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+
+// ── Delivery chime (Web Audio API, no file needed) ────────
+function playDeliveryChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [659.25, 783.99, 987.77, 1318.51]; // E5 G5 B5 E6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t);
+      osc.stop(t + 0.36);
+    });
+  } catch {
+    // Silently ignore if audio is blocked
+  }
+}
+
+// ── In-app toast notification ─────────────────────────────
+interface DeliveryToast {
+  id: string;
+  channel: ChannelKey;
+  orderId: string;
+  items: string[];
+  total: number;
+  driver: string;
+  eta: string;
+}
+
+function DeliveryToastItem({
+  toast, onDismiss,
+}: { toast: DeliveryToast; onDismiss: (id: string) => void }) {
+  const ch = CHANNELS[toast.channel];
+  const [leaving, setLeaving] = useState(false);
+
+  const dismiss = useCallback(() => {
+    setLeaving(true);
+    setTimeout(() => onDismiss(toast.id), 280);
+  }, [toast.id, onDismiss]);
+
+  useEffect(() => {
+    const t = setTimeout(dismiss, 7000);
+    return () => clearTimeout(t);
+  }, [dismiss]);
+
+  return (
+    <div className={cn(
+      "w-[320px] bg-card border-2 rounded-2xl shadow-[0_8px_32px_hsl(var(--primary)/0.18)] overflow-hidden transition-all duration-300",
+      leaving ? "opacity-0 translate-x-8 scale-95" : "opacity-100 translate-x-0 scale-100"
+    )} style={{ borderColor: ch.hex + "70" }}>
+      {/* Progress bar */}
+      <div className="h-[3px] w-full" style={{ background: ch.hex + "30" }}>
+        <div className="h-full rounded-full animate-[shrink_7s_linear_forwards]" style={{ background: ch.hex }} />
+      </div>
+      <div className="p-3.5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px] shrink-0 border"
+            style={{ background: ch.hex + "18", borderColor: ch.hex + "35" }}>
+            {ch.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[12px] font-extrabold" style={{ color: ch.hex }}>
+                🛵 ออเดอร์ใหม่ — {ch.name}
+              </span>
+              <button onClick={dismiss} className="text-muted-foreground hover:text-foreground text-[14px] ml-2 shrink-0 leading-none">✕</button>
+            </div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="font-mono font-extrabold text-[15px] text-foreground">{toast.orderId}</span>
+              <span className="font-mono text-[13px] font-bold text-accent">฿{toast.total}</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground truncate mb-1.5">{toast.items.join(", ")}</div>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="text-muted-foreground">🚴 <strong className="text-foreground">{toast.driver}</strong></span>
+              <span className="text-muted-foreground">⏰ ETA <strong className="text-accent">{toast.eta}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeliveryToastContainer({
+  toasts, onDismiss,
+}: { toasts: DeliveryToast[]; onDismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className="pointer-events-auto">
+          <DeliveryToastItem toast={t} onDismiss={onDismiss} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ── Channel definitions ───────────────────────────────────
 const CHANNELS = {
