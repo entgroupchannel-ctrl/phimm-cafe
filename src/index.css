@@ -2,78 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
 
-/* ── Premium POS Design System ── */
+/* ── POSAI — Apple-inspired Light Design System ── */
 @layer base {
   :root {
-    /* ── Base surfaces (Light / Warm White) ── */
-    --background:    40 22% 97%;         /* Warm parchment #F9F8F5 */
-    --surface:        0  0% 100%;         /* Pure white     */
-    --surface-alt:  220 15% 97%;          /* Soft gray      */
-    --surface-hover:220 15% 94%;
+    /* ── Base surfaces — Pure clean white ── */
+    --background:    210 20% 98%;        /* #F8F9FB — Apple light gray */
+    --surface:         0  0% 100%;       /* Pure white */
+    --surface-alt:   210 16% 96%;        /* Soft off-white */
+    --surface-hover: 210 16% 93%;
 
-    /* ── Dark header ── */
-    --header:        222 28%  9%;         /* Deep charcoal  */
-    --header-fg:     210 20% 94%;         /* Near white     */
-    --header-muted:  220 15% 52%;
+    /* ── Header — frosted white, Apple style ── */
+    --header:        210 20% 99%;        /* Near white, frosted */
+    --header-fg:     220 24% 12%;        /* Near black text */
+    --header-muted:  220 12% 52%;
 
     /* ── Text ── */
-    --foreground:       220 28% 10%;      /* Deep charcoal  */
-    --foreground-muted: 220 14% 48%;
-    --foreground-dim:   220 10% 66%;
+    --foreground:       220 24% 10%;     /* Apple near-black */
+    --foreground-muted: 220 10% 50%;
+    --foreground-dim:   220  8% 68%;
 
-    /* ── Brand ── */
-    --primary:            243 58% 52%;    /* Indigo  #4338CA */
-    --primary-foreground:   0  0% 100%;
-    --primary-glow:       243 58% 52%;
+    /* ── Brand — Apple Blue ── */
+    --primary:            211 100% 50%;  /* #0071FF Apple blue */
+    --primary-foreground:   0   0% 100%;
+    --primary-glow:       211 100% 60%;
 
-    --accent:             197 70% 38%;    /* Deep teal       */
-    --accent-foreground:    0  0% 100%;
-    --accent-glow:        197 70% 38%;
+    --accent:             211 100% 50%;
+    --accent-foreground:    0   0% 100%;
+    --accent-glow:        211 100% 60%;
 
     /* ── Semantic ── */
-    --success:   160 60% 38%;
-    --warning:    38 88% 48%;
-    --danger:      0 70% 54%;
-    --destructive:  0 70% 54%;
+    --success:   142 64% 38%;            /* Apple green */
+    --warning:    38 92% 50%;            /* Apple yellow */
+    --danger:      0 72% 52%;            /* Apple red */
+    --destructive:  0 72% 52%;
     --destructive-foreground: 0 0% 100%;
 
     /* ── Shadcn compat ── */
-    --card:             0  0% 100%;
-    --card-foreground: 220 28% 10%;
-    --popover:          0  0% 100%;
-    --popover-foreground: 220 28% 10%;
-    --secondary:      220 15% 96%;
-    --secondary-foreground: 220 28% 10%;
-    --muted:          220 15% 95%;
-    --muted-foreground: 220 14% 48%;
+    --card:              0  0% 100%;
+    --card-foreground: 220 24% 10%;
+    --popover:           0  0% 100%;
+    --popover-foreground: 220 24% 10%;
+    --secondary:       210 16% 95%;
+    --secondary-foreground: 220 24% 10%;
+    --muted:           210 16% 94%;
+    --muted-foreground: 220 10% 50%;
 
-    --border:       220 14% 90%;          /* Subtle gray line */
-    --border-light: 220 14% 82%;
-    --input:        220 14% 90%;
-    --ring:         243 58% 52%;
-    --radius:       0.875rem;
+    --border:       210 14% 89%;         /* Light hairline */
+    --border-light: 210 14% 80%;
+    --input:        210 14% 89%;
+    --ring:         211 100% 50%;
+    --radius:       0.75rem;             /* Apple 12px corners */
 
-    /* ── Gradients ── */
-    --gradient-primary: linear-gradient(135deg, hsl(243 58% 52%), hsl(258 66% 60%), hsl(248 78% 70%));
-    --gradient-accent:  linear-gradient(135deg, hsl(197 70% 38%), hsl(243 58% 52%));
+    /* ── Gradients — subtle Apple style ── */
+    --gradient-primary: linear-gradient(135deg, hsl(211 100% 50%), hsl(230 100% 60%));
+    --gradient-accent:  linear-gradient(135deg, hsl(211 100% 50%), hsl(265 100% 65%));
 
-    /* ── Shadows ── */
-    --shadow-card:        0 1px 3px 0 rgb(0 0 0 / 0.06), 0 4px 16px -4px rgb(0 0 0 / 0.05);
-    --shadow-card-hover:  0 2px 8px 0 rgb(0 0 0 / 0.09), 0 8px 24px -8px rgb(0 0 0 / 0.07);
-    --shadow-primary:     0 4px 20px -2px rgb(67 56 202 / 0.38);
-    --shadow-primary-lg:  0 8px 32px -4px rgb(67 56 202 / 0.45);
+    /* ── Shadows — Apple layered depth ── */
+    --shadow-card:        0 1px 2px 0 rgb(0 0 0 / 0.04), 0 4px 16px -4px rgb(0 0 0 / 0.06);
+    --shadow-card-hover:  0 2px 8px 0 rgb(0 0 0 / 0.07), 0 12px 28px -8px rgb(0 0 0 / 0.08);
+    --shadow-primary:     0 4px 20px -2px rgb(0 113 255 / 0.35);
+    --shadow-primary-lg:  0 8px 32px -4px rgb(0 113 255 / 0.42);
 
     /* ── Sidebar ── */
-    --sidebar-background: 220 15% 97%;
-    --sidebar-foreground: 220 28% 10%;
-    --sidebar-primary:    243 58% 52%;
+    --sidebar-background: 210 16% 97%;
+    --sidebar-foreground: 220 24% 10%;
+    --sidebar-primary:    211 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:     220 15% 94%;
-    --sidebar-accent-foreground: 220 28% 10%;
-    --sidebar-border:     220 14% 90%;
-    --sidebar-ring:       243 58% 52%;
+    --sidebar-accent:     210 16% 93%;
+    --sidebar-accent-foreground: 220 24% 10%;
+    --sidebar-border:     210 14% 89%;
+    --sidebar-ring:       211 100% 50%;
   }
 }
 
@@ -87,11 +87,20 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', system-ui, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Apple SF Pro stack: actual SF Pro when available, then Inter as web-safe fallback */
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: 'SF Mono', ui-monospace, 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Smooth number rendering */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -110,6 +119,23 @@
   .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
   .shadow-primary    { box-shadow: var(--shadow-primary); }
   .shadow-primary-lg { box-shadow: var(--shadow-primary-lg); }
+
+  /* Apple-style vibrancy/glass */
+  .glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  .glass-dark {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: saturate(200%) blur(24px);
+    -webkit-backdrop-filter: saturate(200%) blur(24px);
+  }
+
+  /* Apple pill badge */
+  .badge-apple {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-tight;
+  }
 
   .scrollbar-hide {
     -ms-overflow-style: none;
