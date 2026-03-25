@@ -13,20 +13,19 @@ interface OrderScreenProps {
 
 const CATS = ["ทั้งหมด", "ยอดนิยม", "อาหารจานเดียว", "เครื่องดื่ม", "ของหวาน"];
 
-// ── Floor plan data ──────────────────────────────────────────
 type TableStatus = "empty" | "occupied" | "reserved";
 
 interface FloorTable {
   id: string;
-  x: number; y: number;   // percent
-  w: number; h: number;   // percent
+  x: number; y: number;
+  w: number; h: number;
   seats: number;
   shape: "rect" | "round";
   status: TableStatus;
   order?: string;
 }
 
-const FLOOR_TABLES: FloorTable[] = [
+const INIT_TABLES: FloorTable[] = [
   { id: "T1", x:  5, y: 8,  w: 13, h: 16, seats: 4, shape: "rect",  status: "empty"    },
   { id: "T2", x: 22, y: 8,  w: 13, h: 16, seats: 4, shape: "rect",  status: "reserved" },
   { id: "T3", x: 39, y: 8,  w: 13, h: 16, seats: 4, shape: "rect",  status: "occupied", order: "฿317" },
@@ -49,20 +48,60 @@ const STATUS_LABEL: Record<TableStatus, string> = {
   empty: "ว่าง", occupied: "มีลูกค้า", reserved: "จอง",
 };
 
-// ── Floor Map Component ──────────────────────────────────────
+// ── Transfer confirmation overlay ───────────────────────────
+function TransferConfirm({
+  from, to, onConfirm, onCancel,
+}: { from: string; to: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm rounded-2xl animate-fade-in">
+      <div className="bg-card border border-border rounded-2xl shadow-card p-6 text-center max-w-[280px] w-full mx-4">
+        <div className="text-[32px] mb-3">🔄</div>
+        <div className="text-[15px] font-bold text-foreground mb-1">ยืนยันการย้ายโต๊ะ?</div>
+        <div className="text-[13px] text-muted-foreground mb-5">
+          ย้ายออเดอร์จาก{" "}
+          <span className="font-bold text-warning">โต๊ะ {from}</span>
+          {" "}ไปยัง{" "}
+          <span className="font-bold text-success">โต๊ะ {to}</span>
+        </div>
+        <div className="flex gap-2.5">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-border bg-muted text-muted-foreground text-[13px] font-medium hover:text-foreground transition-colors"
+          >
+            ยกเลิก
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl gradient-primary text-white text-[13px] font-bold shadow-primary hover:shadow-primary-lg transition-shadow"
+          >
+            ยืนยัน
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Floor Map ───────────────────────────────────────────────
 function FloorMap({
+  tables,
   activeTable,
+  transferMode,
+  pendingTarget,
   onSelect,
   onClose,
 }: {
+  tables: FloorTable[];
   activeTable: string;
+  transferMode: boolean;
+  pendingTarget: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
 }) {
   const counts = {
-    empty:    FLOOR_TABLES.filter((t) => t.status === "empty").length,
-    occupied: FLOOR_TABLES.filter((t) => t.status === "occupied").length,
-    reserved: FLOOR_TABLES.filter((t) => t.status === "reserved").length,
+    empty:    tables.filter((t) => t.status === "empty").length,
+    occupied: tables.filter((t) => t.status === "occupied").length,
+    reserved: tables.filter((t) => t.status === "reserved").length,
   };
 
   return (
@@ -70,11 +109,19 @@ function FloorMap({
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-[15px] font-bold text-foreground">🗺 แผนผังร้าน</span>
-          <span className="text-[12px] text-muted-foreground">— กินดี สุขุมวิท</span>
+          {transferMode ? (
+            <>
+              <span className="text-[15px] font-bold text-warning">🔄 โหมดย้ายโต๊ะ</span>
+              <span className="text-[12px] text-muted-foreground">— เลือกโต๊ะปลายทาง (เฉพาะโต๊ะว่าง)</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[15px] font-bold text-foreground">🗺 แผนผังร้าน</span>
+              <span className="text-[12px] text-muted-foreground">— กินดี สุขุมวิท</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
-          {/* Legend */}
           <div className="flex items-center gap-2.5 text-[12px]">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-success/30 border border-success/50 inline-block" />
@@ -93,20 +140,24 @@ function FloorMap({
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg border border-border bg-card text-muted-foreground text-[12px] font-medium hover:text-foreground hover:border-border-light transition-colors"
           >
-            ← กลับเมนู
+            {transferMode ? "✕ ยกเลิก" : "← กลับเมนู"}
           </button>
         </div>
       </div>
 
       {/* Floor plan */}
-      <div className="flex-1 relative rounded-2xl border border-border overflow-hidden"
-        style={{ background: "hsl(var(--surface-alt))" }}>
-
-        {/* Room grid pattern */}
+      <div
+        className={cn(
+          "flex-1 relative rounded-2xl border overflow-hidden transition-colors",
+          transferMode ? "border-warning/40 shadow-[0_0_0_3px_hsl(var(--warning)/0.1)]" : "border-border"
+        )}
+        style={{ background: "hsl(var(--surface-alt))" }}
+      >
+        {/* Grid pattern */}
         <div className="absolute inset-0 opacity-[0.035]"
           style={{ backgroundImage: "repeating-linear-gradient(0deg,hsl(var(--foreground)) 0 1px,transparent 1px 40px),repeating-linear-gradient(90deg,hsl(var(--foreground)) 0 1px,transparent 1px 40px)" }} />
 
-        {/* Kitchen zone */}
+        {/* Kitchen */}
         <div className="absolute right-0 top-0 bottom-0 w-[13%] bg-muted/60 border-l border-dashed border-border flex flex-col items-center justify-center gap-1">
           <span className="text-[20px]">👨‍🍳</span>
           <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">ครัว</span>
@@ -117,43 +168,69 @@ function FloorMap({
           <span className="text-[10px] font-semibold text-success/60 tracking-widest">ENTRANCE</span>
         </div>
 
-        {/* Bar counter */}
+        {/* Bar */}
         <div className="absolute top-0 left-0 w-[2%] h-[32%] bg-muted/50 border-r border-dashed border-border" />
 
         {/* Tables */}
-        {FLOOR_TABLES.map((table) => {
-          const style = STATUS_STYLE[table.status];
-          const isActive = activeTable === table.id;
-          const isRound = table.shape === "round";
+        {tables.map((table) => {
+          const isSource  = transferMode && table.id === activeTable;
+          const isTarget  = pendingTarget === table.id;
+          const isSelectable = !transferMode || table.status === "empty";
+          const isDimmed  = transferMode && !isSource && !isSelectable;
+          const style     = STATUS_STYLE[table.status];
+          const isActive  = !transferMode && activeTable === table.id;
+          const isRound   = table.shape === "round";
 
           return (
             <button
               key={table.id}
-              onClick={() => { onSelect(table.id); onClose(); }}
+              disabled={isDimmed}
+              onClick={() => isSelectable || isSource ? onSelect(table.id) : undefined}
               className={cn(
-                "absolute flex flex-col items-center justify-center gap-0.5 border-2 transition-all duration-200 group",
+                "absolute flex flex-col items-center justify-center gap-0.5 border-2 transition-all duration-200",
                 isRound ? "rounded-full" : "rounded-xl",
-                style.bg, style.border,
-                isActive && "ring-2 ring-offset-2 ring-primary ring-offset-surface-alt scale-105 shadow-primary z-10",
-                !isActive && "hover:scale-105 hover:shadow-card-hover hover:z-10",
+                // dimmed non-selectable
+                isDimmed && "opacity-30 cursor-not-allowed",
+                // source table in transfer mode
+                isSource && "border-warning/70 bg-warning/15 scale-105 shadow-[0_0_16px_hsl(var(--warning)/0.3)] z-10",
+                // pending target
+                isTarget && "border-success/80 bg-success/15 scale-110 shadow-[0_0_20px_hsl(var(--success)/0.35)] z-20",
+                // normal empty selectable in transfer mode
+                !isSource && !isTarget && !isDimmed && transferMode && table.status === "empty" &&
+                  "border-success/50 bg-success/8 hover:scale-105 hover:shadow-card-hover hover:z-10 cursor-pointer animate-pulse-glow",
+                // normal mode
+                !transferMode && !isActive && cn(style.bg, style.border, "hover:scale-105 hover:shadow-card-hover hover:z-10"),
+                !transferMode && isActive  && "ring-2 ring-offset-2 ring-primary ring-offset-surface-alt scale-105 shadow-primary z-10",
+                !transferMode && !isActive && cn(style.bg, style.border),
               )}
-              style={{
-                left:   `${table.x}%`,
-                top:    `${table.y}%`,
-                width:  `${table.w}%`,
-                height: `${table.h}%`,
-              }}
+              style={{ left: `${table.x}%`, top: `${table.y}%`, width: `${table.w}%`, height: `${table.h}%` }}
             >
-              <span className={cn("text-[11px] font-extrabold tracking-tight", style.text)}>
+              {/* Source arrow */}
+              {isSource && (
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[14px] animate-bounce">↕️</span>
+              )}
+              <span className={cn(
+                "text-[11px] font-extrabold tracking-tight",
+                isSource  ? "text-warning"  :
+                isTarget  ? "text-success"  :
+                transferMode && table.status === "empty" ? "text-success" :
+                style.text
+              )}>
                 {table.id}
               </span>
               <span className="text-[9px] text-muted-foreground/70">{table.seats} ที่นั่ง</span>
-              {table.order && (
+              {isSource && (
+                <span className="text-[8px] font-bold text-warning/80 mt-0.5">ต้นทาง</span>
+              )}
+              {isTarget && (
+                <span className="text-[8px] font-bold text-success/80 mt-0.5">ปลายทาง</span>
+              )}
+              {!isSource && !isTarget && table.order && (
                 <span className={cn("text-[9px] font-bold px-1 py-px rounded border mt-0.5", style.badge)}>
                   {table.order}
                 </span>
               )}
-              {isActive && (
+              {!transferMode && isActive && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full gradient-primary border-2 border-card shadow-primary" />
               )}
             </button>
@@ -169,9 +246,15 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
   const [activeCat, setActiveCat]     = useState("ทั้งหมด");
   const [activeTable, setActiveTable] = useState("T3");
   const [showMap, setShowMap]         = useState(false);
+  const [transferMode, setTransferMode] = useState(false);
+  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+  const [transferDone, setTransferDone] = useState<string | null>(null);
 
-  const TABLES = FLOOR_TABLES.map((t) => t.id);
-  const activeFloor = FLOOR_TABLES.find((t) => t.id === activeTable);
+  // Dynamic table statuses
+  const [tables, setTables] = useState<FloorTable[]>(INIT_TABLES);
+
+  const TABLES = tables.map((t) => t.id);
+  const activeFloor = tables.find((t) => t.id === activeTable);
 
   const filtered =
     activeCat === "ทั้งหมด"   ? menuItems
@@ -192,22 +275,89 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
   const total    = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const totalQty = cart.reduce((s, c) => s + c.qty, 0);
 
+  // ── Transfer handlers ──
+  const handleStartTransfer = () => {
+    setShowMap(true);
+    setTransferMode(true);
+    setPendingTarget(null);
+  };
+
+  const handleMapSelect = (id: string) => {
+    if (!transferMode) {
+      setActiveTable(id);
+      setShowMap(false);
+    } else {
+      if (id === activeTable) return; // can't transfer to same table
+      setPendingTarget(id);
+    }
+  };
+
+  const handleTransferConfirm = () => {
+    if (!pendingTarget) return;
+    const from = activeTable;
+    const to   = pendingTarget;
+
+    setTables((prev) => prev.map((t) => {
+      if (t.id === from) return { ...t, status: "empty", order: undefined };
+      if (t.id === to)   return { ...t, status: "occupied", order: `฿${total.toLocaleString()}` };
+      return t;
+    }));
+
+    setActiveTable(to);
+    setPendingTarget(null);
+    setTransferMode(false);
+    setShowMap(false);
+    setTransferDone(to);
+    setTimeout(() => setTransferDone(null), 3000);
+  };
+
+  const handleTransferCancel = () => {
+    setPendingTarget(null);
+    setTransferMode(false);
+    setShowMap(false);
+  };
+
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden relative">
+
+      {/* ── Transfer done toast ── */}
+      {transferDone && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+          <div className="bg-card border border-success/30 rounded-xl shadow-card px-4 py-2.5 flex items-center gap-2.5 text-[13px]">
+            <span className="text-[18px]">✅</span>
+            <span className="font-semibold text-foreground">
+              ย้ายไปยัง <span className="text-success">โต๊ะ {transferDone}</span> สำเร็จ
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Left: Menu or Map ── */}
       {showMap ? (
-        <FloorMap
-          activeTable={activeTable}
-          onSelect={setActiveTable}
-          onClose={() => setShowMap(false)}
-        />
+        <div className="flex-1 relative">
+          <FloorMap
+            tables={tables}
+            activeTable={activeTable}
+            transferMode={transferMode}
+            pendingTarget={pendingTarget}
+            onSelect={handleMapSelect}
+            onClose={handleTransferCancel}
+          />
+          {/* Confirmation overlay */}
+          {pendingTarget && (
+            <TransferConfirm
+              from={activeTable}
+              to={pendingTarget}
+              onConfirm={handleTransferConfirm}
+              onCancel={() => setPendingTarget(null)}
+            />
+          )}
+        </div>
       ) : (
         <div className="flex-1 flex flex-col px-5 py-4 overflow-hidden bg-background">
 
           {/* Table selector */}
           <div className="flex items-center gap-2 mb-3">
-            {/* Active table pill */}
             <button
               onClick={() => setShowMap(true)}
               className="flex items-center gap-2 gradient-primary px-3.5 py-2 rounded-xl text-[13px] font-bold text-white shadow-primary hover:shadow-primary-lg transition-shadow shrink-0"
@@ -220,7 +370,7 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
                   activeFloor.status === "occupied" && "bg-warning/30 border-warning/50",
                   activeFloor.status === "reserved" && "bg-primary/30 border-primary/50",
                 )}>
-                  {STATUS_LABEL[activeFloor.status]}
+                  {STATUS_LABEL[activeFloor.status ?? "empty"]}
                 </span>
               )}
               <span className="text-white/70 text-[11px]">🗺</span>
@@ -228,7 +378,7 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
 
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
               {TABLES.map((t) => {
-                const tf = FLOOR_TABLES.find((f) => f.id === t)!;
+                const tf = tables.find((f) => f.id === t)!;
                 return (
                   <button
                     key={t}
@@ -313,7 +463,9 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
       <div className="w-[280px] bg-surface border-l border-border flex flex-col p-4 shadow-[-4px_0_20px_-4px_rgba(0,0,0,0.05)] shrink-0">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[14px] font-bold text-foreground">🧾 ออเดอร์ปัจจุบัน</span>
-          <POSBadge color="accent">{cart.length} รายการ</POSBadge>
+          <div className="flex items-center gap-2">
+            <POSBadge color="accent">{cart.length} รายการ</POSBadge>
+          </div>
         </div>
 
         {/* Cart items */}
@@ -332,15 +484,11 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
                   <div className="text-[11px] text-muted-foreground font-mono">฿{item.price} × {item.qty}</div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="w-6 h-6 rounded-lg border border-border bg-muted text-muted-foreground flex items-center justify-center text-xs hover:border-border-light hover:text-foreground transition-colors"
-                  >−</button>
+                  <button onClick={() => removeFromCart(item.id)}
+                    className="w-6 h-6 rounded-lg border border-border bg-muted text-muted-foreground flex items-center justify-center text-xs hover:border-border-light hover:text-foreground transition-colors">−</button>
                   <span className="font-mono font-bold text-[12px] w-4 text-center tabular-nums text-foreground">{item.qty}</span>
-                  <button
-                    onClick={() => addToCart(item)}
-                    className="w-6 h-6 rounded-lg gradient-primary text-white flex items-center justify-center text-xs shadow-primary"
-                  >+</button>
+                  <button onClick={() => addToCart(item)}
+                    className="w-6 h-6 rounded-lg gradient-primary text-white flex items-center justify-center text-xs shadow-primary">+</button>
                 </div>
                 <div className="font-mono font-bold text-[12px] text-accent min-w-[44px] text-right tabular-nums">
                   ฿{item.price * item.qty}
@@ -360,15 +508,22 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
             <span className="text-[15px] font-bold text-foreground">ยอดรวม</span>
             <span className="font-mono text-[22px] font-extrabold text-accent tabular-nums">฿{total.toLocaleString()}</span>
           </div>
-          <button
-            onClick={onPay}
-            className="w-full py-3 rounded-xl gradient-primary text-white font-bold text-[14px] shadow-primary hover:shadow-primary-lg transition-shadow"
-          >
+          <button onClick={onPay}
+            className="w-full py-3 rounded-xl gradient-primary text-white font-bold text-[14px] shadow-primary hover:shadow-primary-lg transition-shadow">
             💳 ชำระเงิน
           </button>
           <div className="flex gap-2">
-            <button className="flex-1 py-2 rounded-xl border border-border bg-muted text-muted-foreground text-[12px] font-medium hover:border-border-light hover:text-foreground transition-colors">
-              🖨 พิมพ์
+            <button
+              onClick={handleStartTransfer}
+              disabled={cart.length === 0}
+              className={cn(
+                "flex-1 py-2 rounded-xl border text-[12px] font-semibold transition-all",
+                cart.length > 0
+                  ? "border-warning/40 bg-warning/8 text-warning hover:bg-warning/15"
+                  : "border-border bg-muted text-muted-foreground/40 cursor-not-allowed"
+              )}
+            >
+              🔄 ย้ายโต๊ะ
             </button>
             <button className="flex-1 py-2 rounded-xl border border-border bg-muted text-muted-foreground text-[12px] font-medium hover:border-border-light hover:text-foreground transition-colors">
               📤 พักบิล
