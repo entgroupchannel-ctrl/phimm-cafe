@@ -554,8 +554,8 @@ export function KioskScreen() {
       {/* Kiosk top bar */}
       <div className="px-5 py-2.5 bg-card border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[14px] shadow-primary">P</div>
-          <span className="text-[15px] font-extrabold text-gradient-primary">POSAI Kiosk</span>
+          <img src="/src/assets/phimm-logo.png" alt="Phimm Cafe" className="w-8 h-8 object-contain" />
+          <span className="text-[15px] font-extrabold text-gradient-primary">Phimm Cafe</span>
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">Self-Service</span>
         </div>
         <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
