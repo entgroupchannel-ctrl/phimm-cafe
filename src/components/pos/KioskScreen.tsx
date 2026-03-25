@@ -50,11 +50,17 @@ function WelcomeScreen({ onStart }: { onStart: (type: "dinein" | "takeaway") => 
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_70%)]" />
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="text-[80px] leading-none mb-4 drop-shadow-sm">🍽️</div>
-        <h1 className="text-[38px] font-black text-foreground leading-tight mb-2 text-balance">ยินดีต้อนรับ</h1>
-        <p className="text-[16px] text-muted-foreground mb-1">
-          ร้าน <span className="font-bold text-primary">Phimm Cafe</span>
-        </p>
+        {/* Logo */}
+        <div className="mb-6 relative">
+          <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150" />
+          <img
+            src={phimmLogo}
+            alt="Phimm Cafe"
+            className="relative w-28 h-28 object-contain drop-shadow-[0_8px_24px_hsl(var(--primary)/0.25)]"
+          />
+        </div>
+        <h1 className="text-[38px] font-black text-foreground leading-tight mb-1 text-balance">Phimm Cafe</h1>
+        <p className="text-[15px] text-muted-foreground mb-1 tracking-wide">ยินดีต้อนรับ</p>
         <p className="text-[14px] text-muted-foreground mb-10 max-w-sm">
           สั่งอาหาร · จ่ายเงิน · รับอาหาร<br />ทั้งหมดจากหน้าจอนี้ — ไม่ต้องรอพนักงาน
         </p>
