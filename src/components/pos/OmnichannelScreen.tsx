@@ -222,9 +222,283 @@ function OrderHubTab() {
   );
 }
 
+// ── ShopeeFood Connect Modal ──────────────────────────────
+const WEBHOOK_URL = "https://api.yourrestaurant.com/webhooks/shopeefood";
+
+type ModalStep = "intro" | "apikey" | "webhook" | "test" | "done";
+
+function ShopeeFoodModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [step, setStep] = useState<ModalStep>("intro");
+  const [apiKey, setApiKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [shopId, setShopId] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testOk, setTestOk] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const copy = () => {
+    navigator.clipboard.writeText(WEBHOOK_URL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const runTest = () => {
+    setTesting(true);
+    setTimeout(() => { setTesting(false); setTestOk(true); }, 1800);
+  };
+
+  const STEPS: { id: ModalStep; label: string }[] = [
+    { id: "intro",   label: "เริ่มต้น" },
+    { id: "apikey",  label: "API Keys" },
+    { id: "webhook", label: "Webhook" },
+    { id: "test",    label: "ทดสอบ" },
+    { id: "done",    label: "เสร็จสิ้น" },
+  ];
+  const stepIdx = STEPS.findIndex(s => s.id === step);
+
+  return (
+    <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={e => { if (e.target === overlayRef.current) onClose(); }}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-[480px] shadow-[0_20px_60px_hsl(var(--primary)/0.15)] overflow-hidden">
+
+        {/* Modal header */}
+        <div className="px-6 pt-5 pb-4 border-b border-border flex items-center justify-between"
+          style={{ background: "#EE4D2D10" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[22px] border"
+              style={{ background: "#EE4D2D18", borderColor: "#EE4D2D40" }}>🟠</div>
+            <div>
+              <div className="text-[15px] font-extrabold text-foreground">เชื่อมต่อ ShopeeFood</div>
+              <div className="text-[11px] text-muted-foreground">Commission 25% · ตั้งค่าครั้งเดียว</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-border transition-colors text-[18px]">✕</button>
+        </div>
+
+        {/* Step progress */}
+        <div className="px-6 py-3 border-b border-border flex items-center gap-1.5">
+          {STEPS.map((s, i) => (
+            <div key={s.id} className="flex items-center gap-1.5 flex-1 last:flex-none">
+              <div className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all",
+                i < stepIdx ? "bg-success text-white" :
+                i === stepIdx ? "text-white shadow-[0_0_10px_hsl(var(--primary)/0.4)]" : "bg-border text-muted-foreground"
+              )} style={i === stepIdx ? { background: "#EE4D2D" } : {}}>
+                {i < stepIdx ? "✓" : i + 1}
+              </div>
+              <span className={cn("text-[10px] font-semibold hidden sm:block",
+                i === stepIdx ? "text-foreground" : "text-muted-foreground")}>{s.label}</span>
+              {i < STEPS.length - 1 && <div className={cn("flex-1 h-[1.5px] rounded-full", i < stepIdx ? "bg-success" : "bg-border")} />}
+            </div>
+          ))}
+        </div>
+
+        {/* Step content */}
+        <div className="px-6 py-5">
+
+          {/* Step 0: Intro */}
+          {step === "intro" && (
+            <div className="space-y-4">
+              <div className="bg-background border border-border rounded-xl p-4 space-y-2.5">
+                <div className="text-[13px] font-bold text-foreground">📋 สิ่งที่ต้องเตรียม</div>
+                {[
+                  { icon:"🔑", text:"ShopeeFood Partner API Key & Secret" },
+                  { icon:"🏪", text:"Shop ID จาก ShopeeFood Partner Portal" },
+                  { icon:"🌐", text:"Webhook URL (เราจะให้ในขั้นตอนถัดไป)" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-[12px] text-muted-foreground">
+                    <span>{item.icon}</span><span>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-warning/8 border border-warning/25 rounded-xl p-3 flex gap-2.5">
+                <span className="text-[16px] shrink-0">💡</span>
+                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  ขอ API Key ได้ที่ <span className="text-warning font-bold">ShopeeFood Partner Portal → Settings → API Integration</span> ใช้เวลาอนุมัติ 1-3 วันทำการ
+                </div>
+              </div>
+              <button onClick={() => setStep("apikey")}
+                className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                style={{ background: "#EE4D2D", boxShadow: "0 4px 16px #EE4D2D40" }}>
+                เริ่มต้นเชื่อมต่อ →
+              </button>
+            </div>
+          )}
+
+          {/* Step 1: API Key */}
+          {step === "apikey" && (
+            <div className="space-y-3.5">
+              <div className="text-[13px] font-bold text-foreground mb-1">🔑 กรอก API Credentials</div>
+              {[
+                { label:"Partner API Key", value:apiKey, set:setApiKey, placeholder:"sp_live_xxxxxxxxxxxxxxxx", icon:"🔑" },
+                { label:"Shop ID", value:shopId, set:setShopId, placeholder:"1234567", icon:"🏪" },
+              ].map((f, i) => (
+                <div key={i}>
+                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">{f.icon} {f.label}</label>
+                  <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
+                    className="w-full h-9 px-3 rounded-xl border border-border bg-background text-[12px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60 transition-colors" />
+                </div>
+              ))}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">🔒 Secret Key</label>
+                <div className="relative">
+                  <input value={secretKey} onChange={e => setSecretKey(e.target.value)}
+                    type={showSecret ? "text" : "password"} placeholder="••••••••••••••••••••••"
+                    className="w-full h-9 px-3 pr-10 rounded-xl border border-border bg-background text-[12px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60 transition-colors" />
+                  <button onClick={() => setShowSecret(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[14px]">
+                    {showSecret ? "🙈" : "👁"}
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setStep("intro")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
+                <button onClick={() => setStep("webhook")}
+                  disabled={!apiKey || !secretKey || !shopId}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "#EE4D2D" }}>
+                  ถัดไป →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Webhook */}
+          {step === "webhook" && (
+            <div className="space-y-4">
+              <div className="text-[13px] font-bold text-foreground">🌐 ตั้งค่า Webhook URL</div>
+              <div className="bg-background border border-border rounded-xl p-3">
+                <div className="text-[10px] font-semibold text-muted-foreground mb-1.5">📎 Webhook Endpoint ของคุณ</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-[11px] font-mono text-primary bg-primary/8 px-2.5 py-1.5 rounded-lg overflow-hidden text-ellipsis whitespace-nowrap">
+                    {WEBHOOK_URL}
+                  </code>
+                  <button onClick={copy}
+                    className={cn("px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all whitespace-nowrap",
+                      copied ? "border-success/40 bg-success/10 text-success" : "border-border text-muted-foreground hover:border-border-light")}>
+                    {copied ? "✓ Copied!" : "📋 Copy"}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-[12px] font-bold text-foreground">วิธีตั้งค่าใน ShopeeFood Partner Portal</div>
+                {[
+                  { step:"1", text:'เข้า Partner Portal → Settings → Webhooks', tag:null },
+                  { step:"2", text:'คลิก "Add Webhook Endpoint"', tag:null },
+                  { step:"3", text:'วาง URL ด้านบนในช่อง Endpoint URL', tag:"URL" },
+                  { step:"4", text:'เลือก Events: order.created, order.status_changed, order.cancelled', tag:"Events" },
+                  { step:"5", text:'คลิก Save และกด "Send Test Event"', tag:null },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 mt-0.5 text-white"
+                      style={{ background: "#EE4D2D" }}>{item.step}</div>
+                    <div className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                      {item.text}
+                      {item.tag && <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-border text-foreground">{item.tag}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setStep("apikey")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
+                <button onClick={() => setStep("test")}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90"
+                  style={{ background: "#EE4D2D" }}>
+                  ทดสอบการเชื่อมต่อ →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Test */}
+          {step === "test" && (
+            <div className="space-y-4">
+              <div className="text-[13px] font-bold text-foreground">🧪 ทดสอบการเชื่อมต่อ</div>
+              <div className="bg-background border border-border rounded-xl p-4 space-y-3">
+                {[
+                  { label:"Partner API Key", value: apiKey.slice(0,8) + "••••••••", ok:true },
+                  { label:"Shop ID",          value: shopId, ok:true },
+                  { label:"Secret Key",       value: "••••••••••••••••", ok:true },
+                  { label:"Webhook URL",      value: "ตั้งค่าแล้ว", ok:true },
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center justify-between text-[12px]">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-foreground">{row.value}</span>
+                      <span className="text-success text-[14px]">✓</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!testOk ? (
+                <button onClick={runTest} disabled={testing}
+                  className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-all"
+                  style={{ background: testing ? "#EE4D2D80" : "#EE4D2D" }}>
+                  {testing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      กำลังทดสอบ...
+                    </span>
+                  ) : "🔗 ทดสอบการเชื่อมต่อ"}
+                </button>
+              ) : (
+                <div className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center gap-2.5">
+                  <span className="text-[20px]">🎉</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-success">การเชื่อมต่อสำเร็จ!</div>
+                    <div className="text-[10px] text-muted-foreground">ShopeeFood ตอบกลับ HTTP 200 OK · Webhook รับ Test Event แล้ว</div>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setStep("webhook")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
+                <button onClick={() => setStep("done")} disabled={!testOk}
+                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "#EE4D2D" }}>
+                  เปิดใช้งาน →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Done */}
+          {step === "done" && (
+            <div className="space-y-4 text-center">
+              <div className="text-[48px] mt-2">🎊</div>
+              <div>
+                <div className="text-[16px] font-extrabold text-foreground mb-1">เชื่อมต่อ ShopeeFood สำเร็จ!</div>
+                <div className="text-[12px] text-muted-foreground">ออเดอร์จาก ShopeeFood จะเข้ามาใน Unified Order Hub โดยอัตโนมัติ</div>
+              </div>
+              <div className="bg-background border border-border rounded-xl p-4 text-left space-y-2">
+                {[
+                  "✅ ออเดอร์ใหม่ปรากฏใน Unified Order Hub",
+                  "✅ แจ้งเตือนเสียงเมื่อมีออเดอร์ใหม่",
+                  "✅ สถานะ real-time: รับออเดอร์ → ทำ → เสร็จ → ส่ง",
+                  "✅ คิด Commission 25% ใน Analytics อัตโนมัติ",
+                ].map((text, i) => (
+                  <div key={i} className="text-[12px] text-muted-foreground">{text}</div>
+                ))}
+              </div>
+              <button onClick={onSuccess}
+                className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                style={{ background: "#EE4D2D", boxShadow: "0 4px 16px #EE4D2D40" }}>
+                เริ่มรับออเดอร์จาก ShopeeFood 🚀
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab 2: Channel Management ─────────────────────────────
 function ChannelMgmtTab() {
   const [channels, setChannels] = useState(CHANNEL_DATA);
+  const [showShopeeModal, setShowShopeeModal] = useState(false);
 
   const connected = channels.filter(c => c.connected);
   const totalRevenue = connected.reduce((s, c) => s + c.revenue, 0);
@@ -233,8 +507,18 @@ function ChannelMgmtTab() {
   const toggle = (key: ChannelKey) =>
     setChannels(prev => prev.map(c => c.key === key ? { ...c, connected: !c.connected } : c));
 
+  const connectShopee = () =>
+    setChannels(prev => prev.map(c => c.key === "shopee" ? { ...c, connected: true } : c));
+
   return (
     <div className="space-y-4">
+      {showShopeeModal && (
+        <ShopeeFoodModal
+          onClose={() => setShowShopeeModal(false)}
+          onSuccess={() => { connectShopee(); setShowShopeeModal(false); }}
+        />
+      )}
+
       {/* Summary stats */}
       <div className="flex gap-3 flex-wrap">
         {[
