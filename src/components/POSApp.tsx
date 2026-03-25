@@ -107,6 +107,7 @@ export function POSApp() {
         {screen === "ai"        && <AIScreen />}
         {screen === "nutrition" && <NutritionScreen />}
         {screen === "kiosk"     && <KioskScreen />}
+        {screen === "omni"      && <OmnichannelScreen />}
         {screen === "settings"  && <SettingsScreen />}
       </main>
     </div>
