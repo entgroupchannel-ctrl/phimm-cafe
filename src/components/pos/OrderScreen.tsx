@@ -546,58 +546,59 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
       ) : (
         <div className="flex-1 flex flex-col px-5 py-4 overflow-hidden bg-background">
 
-          {/* Table selector */}
-          <div className="flex items-center gap-2 mb-3">
+          {/* ── Table selector row ── */}
+          <div className="flex items-center gap-2 mb-4">
+            {/* Active table pill */}
             <button
               onClick={() => setShowMap(true)}
-              className="flex items-center gap-2 gradient-primary px-3.5 py-2 rounded-xl text-[13px] font-bold text-white shadow-primary hover:shadow-primary-lg transition-shadow shrink-0"
+              className="flex items-center gap-1.5 bg-primary text-white px-3.5 py-1.5 rounded-full text-[13px] font-semibold shadow-[0_2px_10px_hsl(var(--primary)/0.32),inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-primary/90 active:scale-[0.97] transition-all shrink-0 select-none"
             >
-              <span>โต๊ะ {activeTable}</span>
+              <span className="font-bold">โต๊ะ {activeTable}</span>
               {activeFloor && (
                 <span className={cn(
-                  "text-[9px] font-semibold px-1.5 py-px rounded border leading-tight",
-                  activeFloor.status === "empty"    && "bg-white/20 border-white/30",
-                  activeFloor.status === "occupied" && "bg-warning/30 border-warning/50",
-                  activeFloor.status === "reserved" && "bg-primary/30 border-primary/50",
+                  "text-[9px] font-semibold px-1.5 py-0.5 rounded-full border leading-tight",
+                  activeFloor.status === "empty"    && "bg-white/25 border-white/30 text-white",
+                  activeFloor.status === "occupied" && "bg-white/20 border-white/30 text-white",
+                  activeFloor.status === "reserved" && "bg-white/20 border-white/30 text-white",
                 )}>
                   {STATUS_LABEL[activeFloor.status ?? "empty"]}
                 </span>
               )}
               {isMergedTable && (
-                <span className="text-[9px] font-bold bg-primary/30 border border-primary/50 px-1.5 py-px rounded">
-                  🔗 รวมโต๊ะ
-                </span>
+                <span className="text-[9px] font-bold bg-white/20 border border-white/30 px-1.5 py-0.5 rounded-full text-white">🔗 รวม</span>
               )}
-              <span className="text-white/70 text-[11px]">🗺</span>
+              <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3 opacity-70 shrink-0">
+                <path d="M2 4.5l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
 
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {/* Table number chips */}
+            <div className="flex gap-1 overflow-x-auto scrollbar-hide">
               {TABLES.map((t) => {
                 const tf = tables.find((f) => f.id === t)!;
-                const isMergedInto = Object.keys(mergedGroups).some(
-                  key => mergedGroups[key].includes(t)
-                );
+                const isMergedInto = Object.keys(mergedGroups).some(key => mergedGroups[key].includes(t));
+                const isActive = t === activeTable;
                 return (
                   <button
                     key={t}
                     onClick={() => setActiveTable(t)}
                     className={cn(
-                      "w-10 h-9 rounded-xl text-[12px] font-semibold border transition-all duration-150 shrink-0 relative",
-                      t === activeTable
-                        ? "border-primary/40 bg-primary/8 text-primary shadow-[0_2px_8px_hsl(var(--primary)/0.15)]"
-                        : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground shadow-card",
-                      isMergedInto && "opacity-40"
+                      "relative h-8 px-3 rounded-full text-[11px] font-semibold border transition-all duration-150 shrink-0 select-none",
+                      isActive
+                        ? "bg-primary/10 border-primary/30 text-primary"
+                        : "bg-white border-border text-muted-foreground hover:border-border-light hover:text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+                      isMergedInto && "opacity-35"
                     )}
                   >
                     {t}
                     <span className={cn(
-                      "absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full",
+                      "absolute bottom-[3px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full",
                       tf.status === "empty"    && "bg-success",
                       tf.status === "occupied" && "bg-warning",
                       tf.status === "reserved" && "bg-primary",
                     )} />
                     {mergedGroups[t] && (
-                      <span className="absolute -top-1 -right-1 text-[8px]">🔗</span>
+                      <span className="absolute -top-0.5 -right-0.5 text-[7px]">🔗</span>
                     )}
                   </button>
                 );
@@ -605,17 +606,17 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
             </div>
           </div>
 
-          {/* Category tabs */}
-          <div className="flex gap-1.5 mb-3 flex-wrap">
+          {/* ── Category pill filters (Apple Segmented-style) ── */}
+          <div className="flex gap-1.5 mb-4 flex-wrap">
             {CATS.map((c) => (
               <button
                 key={c}
                 onClick={() => setActiveCat(c)}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-xl text-[12px] font-semibold border transition-all duration-150",
+                  "px-4 py-1.5 rounded-full text-[12px] font-semibold border transition-all duration-150 select-none active:scale-[0.97]",
                   activeCat === c
-                    ? "border-primary/40 bg-primary/8 text-primary"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border-light shadow-card"
+                    ? "bg-primary text-white border-transparent shadow-[0_2px_8px_hsl(var(--primary)/0.28),inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    : "bg-white border-border text-muted-foreground hover:text-foreground hover:border-border-light shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                 )}
               >
                 {c}
@@ -623,10 +624,10 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
             ))}
           </div>
 
-          {/* Menu Grid */}
+          {/* ── Menu Grid (Apple white cards) ── */}
           <div
-            className="grid gap-2 overflow-y-auto flex-1 scrollbar-hide pb-2 content-start"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
+            className="grid gap-2.5 overflow-y-auto flex-1 scrollbar-hide pb-2 content-start"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))" }}
           >
             {filtered.map((item) => {
               const inCart = cart.find((c) => c.id === item.id);
@@ -635,25 +636,27 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
                   key={item.id}
                   onClick={() => addToCart(item)}
                   className={cn(
-                    "relative bg-card border rounded-xl px-3 py-3 flex flex-col items-center gap-1.5 transition-all duration-150 h-[110px] justify-center",
+                    "relative bg-white rounded-2xl px-3 py-3.5 flex flex-col items-center gap-1.5 transition-all duration-150 h-[118px] justify-center select-none active:scale-[0.96]",
                     inCart
-                      ? "border-primary/40 shadow-primary bg-primary/[0.03]"
-                      : "border-border hover:border-border-light hover:shadow-card-hover shadow-card"
+                      ? "shadow-[0_0_0_2px_hsl(var(--primary)/0.5),0_4px_16px_hsl(var(--primary)/0.12)]"
+                      : "shadow-[0_1px_3px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.09),0_8px_20px_rgba(0,0,0,0.06)]"
                   )}
                 >
+                  {/* Cart qty badge */}
                   {inCart && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full gradient-primary text-white text-[10px] font-extrabold flex items-center justify-center shadow-primary z-10">
+                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.4)] z-10">
                       {inCart.qty}
                     </span>
                   )}
+                  {/* Popular HOT badge */}
                   {item.popular && (
-                    <span className="absolute top-1.5 left-1.5">
-                      <POSBadge color="warning" className="text-[9px] py-px px-1.5">HOT</POSBadge>
+                    <span className="absolute top-2 left-2 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25 leading-none">
+                      🔥 ยอดนิยม
                     </span>
                   )}
-                  <span className="text-[28px] leading-none">{item.img}</span>
-                  <span className="text-[12px] font-semibold text-center leading-tight text-foreground">{item.name}</span>
-                  <span className="font-mono text-[13px] font-bold text-accent">฿{item.price}</span>
+                  <span className="text-[30px] leading-none">{item.img}</span>
+                  <span className="text-[11px] font-semibold text-center leading-tight text-foreground line-clamp-2">{item.name}</span>
+                  <span className="font-mono text-[13px] font-bold tabular-nums" style={{ color: "hsl(var(--primary))" }}>฿{item.price}</span>
                 </button>
               );
             })}
