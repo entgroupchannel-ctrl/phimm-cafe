@@ -1,5 +1,109 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+
+// ── Delivery chime (Web Audio API, no file needed) ────────
+function playDeliveryChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [659.25, 783.99, 987.77, 1318.51]; // E5 G5 B5 E6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t);
+      osc.stop(t + 0.36);
+    });
+  } catch {
+    // Silently ignore if audio is blocked
+  }
+}
+
+// ── In-app toast notification ─────────────────────────────
+interface DeliveryToast {
+  id: string;
+  channel: ChannelKey;
+  orderId: string;
+  items: string[];
+  total: number;
+  driver: string;
+  eta: string;
+}
+
+function DeliveryToastItem({
+  toast, onDismiss,
+}: { toast: DeliveryToast; onDismiss: (id: string) => void }) {
+  const ch = CHANNELS[toast.channel];
+  const [leaving, setLeaving] = useState(false);
+
+  const dismiss = useCallback(() => {
+    setLeaving(true);
+    setTimeout(() => onDismiss(toast.id), 280);
+  }, [toast.id, onDismiss]);
+
+  useEffect(() => {
+    const t = setTimeout(dismiss, 7000);
+    return () => clearTimeout(t);
+  }, [dismiss]);
+
+  return (
+    <div className={cn(
+      "w-[320px] bg-card border-2 rounded-2xl shadow-[0_8px_32px_hsl(var(--primary)/0.18)] overflow-hidden transition-all duration-300",
+      leaving ? "opacity-0 translate-x-8 scale-95" : "opacity-100 translate-x-0 scale-100"
+    )} style={{ borderColor: ch.hex + "70" }}>
+      {/* Progress bar */}
+      <div className="h-[3px] w-full" style={{ background: ch.hex + "30" }}>
+        <div className="h-full rounded-full animate-[shrink_7s_linear_forwards]" style={{ background: ch.hex }} />
+      </div>
+      <div className="p-3.5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px] shrink-0 border"
+            style={{ background: ch.hex + "18", borderColor: ch.hex + "35" }}>
+            {ch.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[12px] font-extrabold" style={{ color: ch.hex }}>
+                🛵 ออเดอร์ใหม่ — {ch.name}
+              </span>
+              <button onClick={dismiss} className="text-muted-foreground hover:text-foreground text-[14px] ml-2 shrink-0 leading-none">✕</button>
+            </div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="font-mono font-extrabold text-[15px] text-foreground">{toast.orderId}</span>
+              <span className="font-mono text-[13px] font-bold text-accent">฿{toast.total}</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground truncate mb-1.5">{toast.items.join(", ")}</div>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="text-muted-foreground">🚴 <strong className="text-foreground">{toast.driver}</strong></span>
+              <span className="text-muted-foreground">⏰ ETA <strong className="text-accent">{toast.eta}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeliveryToastContainer({
+  toasts, onDismiss,
+}: { toasts: DeliveryToast[]; onDismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className="pointer-events-auto">
+          <DeliveryToastItem toast={t} onDismiss={onDismiss} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ── Channel definitions ───────────────────────────────────
 const CHANNELS = {
@@ -50,11 +154,25 @@ function formatTime(s: number) {
   return m < 1 ? "< 1 นาที" : `${m} นาที`;
 }
 
+// ── Simulated incoming delivery orders ────────────────────
+const INCOMING_POOL: Omit<LiveOrder, "id" | "time" | "status">[] = [
+  { channel:"lineman",   table:"D9",  items:["ผัดกะเพราหมู x2","ข้าวสวย x2"],        total:196, driver:"ธนัช",  eta:"14 นาที" },
+  { channel:"grab",      table:"D10", items:["ต้มยำกุ้ง x1","ข้าวผัด x1"],           total:234, driver:"สุริยา", eta:"10 นาที" },
+  { channel:"lineman",   table:"D11", items:["ส้มตำไทย x1","ไก่ย่าง x1","โคล่า x2"], total:318, driver:"วันชัย", eta:"18 นาที" },
+  { channel:"grab",      table:"D12", items:["ข้าวมันไก่ x2","น้ำเปล่า x2"],         total:210, driver:"ปิยะ",  eta:"7 นาที"  },
+  { channel:"lineman",   table:"D13", items:["แกงเขียวหวานไก่ x1","ข้าว x1"],        total:165, driver:"ณัฐ",   eta:"11 นาที" },
+  { channel:"grab",      table:"D14", items:["หมูกะทะ Set B x1"],                    total:399, driver:"อนุชา", eta:"22 นาที" },
+];
+let _orderCounter = 259;
+
 // ── Tab 1: Unified Order Hub ──────────────────────────────
 function OrderHubTab() {
   const [filter, setFilter] = useState("all");
   const [orders, setOrders] = useState<LiveOrder[]>(INITIAL_ORDERS);
+  const [toasts, setToasts] = useState<DeliveryToast[]>([]);
+  const orderCounterRef = useRef(_orderCounter);
 
+  // Tick timer
   useEffect(() => {
     const iv = setInterval(() => {
       setOrders(prev => prev.map(o =>
@@ -62,6 +180,34 @@ function OrderHubTab() {
       ));
     }, 1000);
     return () => clearInterval(iv);
+  }, []);
+
+  // Simulate new delivery order every 15 s
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const pool = INCOMING_POOL;
+      const tpl = pool[Math.floor(Math.random() * pool.length)];
+      orderCounterRef.current += 1;
+      const newId = `#0${orderCounterRef.current}`;
+      const newOrder: LiveOrder = { ...tpl, id: newId, time: 0, status: "new" };
+      setOrders(prev => [newOrder, ...prev]);
+      const toastId = `toast-${Date.now()}`;
+      setToasts(prev => [...prev, {
+        id: toastId,
+        channel: tpl.channel,
+        orderId: newId,
+        items: tpl.items,
+        total: tpl.total,
+        driver: tpl.driver ?? "—",
+        eta: tpl.eta ?? "—",
+      }]);
+      playDeliveryChime();
+    }, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
   const active = orders.filter(o => o.status !== "served");
@@ -92,6 +238,7 @@ function OrderHubTab() {
 
   return (
     <div className="space-y-4">
+      <DeliveryToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* Channel filter bar */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
         <button onClick={() => setFilter("all")}
@@ -104,6 +251,11 @@ function OrderHubTab() {
           className={cn("px-3.5 py-2 rounded-xl text-[12px] font-bold border-2 whitespace-nowrap transition-all",
             filter === "delivery" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:border-border-light")}>
           🛵 Delivery ทั้งหมด
+        </button>
+        <button onClick={playDeliveryChime}
+          className="ml-auto px-3 py-2 rounded-xl text-[12px] font-semibold border-2 border-border text-muted-foreground hover:border-border-light whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0"
+          title="ทดสอบเสียงแจ้งเตือน">
+          🔔 ทดสอบเสียง
         </button>
         {(Object.entries(CHANNELS) as [ChannelKey, typeof CHANNELS[ChannelKey]][]).map(([key, ch]) => {
           const count = channelCounts[key] || 0;
