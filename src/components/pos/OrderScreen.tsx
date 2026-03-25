@@ -170,7 +170,7 @@ function FloorMap({
           ) : (
             <>
               <span className="text-[15px] font-bold text-foreground">🗺 แผนผังร้าน</span>
-              <span className="text-[12px] text-muted-foreground">— กินดี สุขุมวิท</span>
+              <span className="text-[12px] text-muted-foreground">— Phimm Cafe</span>
             </>
           )}
         </div>
