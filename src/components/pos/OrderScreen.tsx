@@ -789,9 +789,6 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
   );
 }
 
-
-export type CartItem = MenuItem & { qty: number };
-
 interface OrderScreenProps {
   cart: CartItem[];
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
