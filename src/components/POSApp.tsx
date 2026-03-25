@@ -8,7 +8,6 @@ import { MenuMgmtScreen } from "./pos/MenuMgmtScreen";
 import { CRMScreen } from "./pos/CRMScreen";
 import { StaffScreen } from "./pos/StaffScreen";
 import { SettingsScreen } from "./pos/SettingsScreen";
-import { POSBadge } from "./pos/POSBadge";
 import { menuItems } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +30,7 @@ function Clock() {
     const d = new Date();
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   });
-  return <span className="font-mono text-[13px] text-muted-foreground tabular-nums">{time}</span>;
+  return <span className="font-mono text-[13px] text-header-muted tabular-nums">{time}</span>;
 }
 
 export function POSApp() {
@@ -43,28 +42,32 @@ export function POSApp() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground font-sans">
-      {/* ── Top Bar ── */}
-      <header className="flex items-center justify-between px-6 py-3 bg-surface border-b border-border shrink-0 z-10">
+
+      {/* ── Dark Header ── */}
+      <header className="flex items-center justify-between px-6 py-3.5 bg-header border-b border-white/[0.07] shrink-0 z-10">
+
         {/* Logo */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-lg shadow-[0_4px_20px_hsl(var(--primary)/0.4)]">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[17px] shadow-primary">
             P
           </div>
-          <span className="text-[18px] font-bold tracking-tight text-gradient-primary">POSAI</span>
-          <POSBadge color="accent" glow>Phase 1 MVP</POSBadge>
+          <span className="text-[18px] font-bold tracking-tight text-gradient-primary select-none">POSAI</span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-accent/20 text-accent border border-accent/30">
+            Phase 1
+          </span>
         </div>
 
         {/* Nav */}
-        <nav className="flex gap-0.5 bg-card rounded-xl p-1 border border-border overflow-x-auto scrollbar-hide mx-4">
+        <nav className="flex gap-0.5 bg-white/[0.06] rounded-xl p-1 border border-white/[0.08] overflow-x-auto scrollbar-hide mx-4">
           {NAV.map((item) => (
             <button
               key={item.key}
               onClick={() => setScreen(item.key)}
               className={cn(
-                "px-3 py-2 rounded-lg text-[12px] font-semibold transition-all duration-150 whitespace-nowrap shrink-0",
+                "px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 whitespace-nowrap shrink-0",
                 screen === item.key
-                  ? "bg-primary text-white shadow-[0_2px_12px_hsl(var(--primary)/0.4)]"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
+                  ? "bg-white text-header shadow-sm"
+                  : "text-header-muted hover:text-header-foreground hover:bg-white/[0.08]"
               )}
             >
               {item.label}
@@ -73,18 +76,18 @@ export function POSApp() {
         </nav>
 
         {/* Status */}
-        <div className="flex items-center gap-4 text-[12px] text-muted-foreground shrink-0">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-success shadow-[0_0_6px_hsl(var(--success)/0.8)] animate-pulse-glow" />
+        <div className="flex items-center gap-4 text-[12px] shrink-0">
+          <span className="flex items-center gap-1.5 text-header-muted">
+            <span className="w-2 h-2 rounded-full bg-success shadow-[0_0_6px_hsl(var(--success)/0.7)] animate-pulse-glow" />
             ออนไลน์
           </span>
-          <span className="hidden sm:inline">ร้าน: กินดี สุขุมวิท</span>
+          <span className="text-header-muted hidden sm:inline">ร้าน: กินดี สุขุมวิท</span>
           <Clock />
         </div>
       </header>
 
       {/* ── Content ── */}
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 overflow-hidden bg-background">
         {screen === "order"     && <OrderScreen cart={cart} setCart={setCart} onPay={() => setScreen("payment")} />}
         {screen === "payment"   && <PaymentScreen cart={cart} onSuccess={() => setScreen("order")} />}
         {screen === "kds"       && <KDSScreen />}

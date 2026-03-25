@@ -4,68 +4,76 @@
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
 
-/* ── POS Dark Design System ── */
+/* ── Premium POS Design System ── */
 @layer base {
   :root {
-    /* Base */
-    --background: 225 35% 7%;         /* #0A0E1A */
-    --surface: 220 28% 11%;            /* #111827 */
-    --surface-alt: 222 30% 16%;        /* #1A2035 */
-    --surface-hover: 222 30% 19%;      /* #1F2A42 */
+    /* ── Base surfaces (Light / Warm White) ── */
+    --background:    40 22% 97%;         /* Warm parchment #F9F8F5 */
+    --surface:        0  0% 100%;         /* Pure white     */
+    --surface-alt:  220 15% 97%;          /* Soft gray      */
+    --surface-hover:220 15% 94%;
 
-    --foreground: 210 40% 96%;         /* #F1F5F9 */
-    --foreground-muted: 215 20% 60%;   /* #94A3B8 */
-    --foreground-dim: 215 20% 40%;     /* #64748B */
+    /* ── Dark header ── */
+    --header:        222 28%  9%;         /* Deep charcoal  */
+    --header-fg:     210 20% 94%;         /* Near white     */
+    --header-muted:  220 15% 52%;
 
-    /* Brand */
-    --primary: 239 84% 67%;            /* #6366F1 */
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 239 84% 67%;
+    /* ── Text ── */
+    --foreground:       220 28% 10%;      /* Deep charcoal  */
+    --foreground-muted: 220 14% 48%;
+    --foreground-dim:   220 10% 66%;
 
-    /* Accent */
-    --accent: 188 92% 53%;             /* #22D3EE */
-    --accent-foreground: 225 35% 7%;
-    --accent-glow: 188 92% 53%;
+    /* ── Brand ── */
+    --primary:            243 58% 52%;    /* Indigo  #4338CA */
+    --primary-foreground:   0  0% 100%;
+    --primary-glow:       243 58% 52%;
 
-    /* Semantic */
-    --success: 160 84% 52%;            /* #34D399 */
-    --warning: 43 96% 56%;             /* #FBBF24 */
-    --danger: 0 91% 71%;               /* #F87171 */
-    --destructive: 0 91% 71%;
+    --accent:             197 70% 38%;    /* Deep teal       */
+    --accent-foreground:    0  0% 100%;
+    --accent-glow:        197 70% 38%;
+
+    /* ── Semantic ── */
+    --success:   160 60% 38%;
+    --warning:    38 88% 48%;
+    --danger:      0 70% 54%;
+    --destructive:  0 70% 54%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Surfaces (shadcn compat) */
-    --card: 222 30% 16%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 30% 16%;
-    --popover-foreground: 210 40% 96%;
-    --secondary: 222 30% 16%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 220 28% 14%;
-    --muted-foreground: 215 20% 60%;
+    /* ── Shadcn compat ── */
+    --card:             0  0% 100%;
+    --card-foreground: 220 28% 10%;
+    --popover:          0  0% 100%;
+    --popover-foreground: 220 28% 10%;
+    --secondary:      220 15% 96%;
+    --secondary-foreground: 220 28% 10%;
+    --muted:          220 15% 95%;
+    --muted-foreground: 220 14% 48%;
 
-    --border: 222 30% 21%;             /* #2A3350 */
-    --border-light: 222 30% 27%;       /* #374168 */
-    --input: 222 30% 21%;
-    --ring: 239 84% 67%;
+    --border:       220 14% 90%;          /* Subtle gray line */
+    --border-light: 220 14% 82%;
+    --input:        220 14% 90%;
+    --ring:         243 58% 52%;
+    --radius:       0.875rem;
 
-    --radius: 0.75rem;
+    /* ── Gradients ── */
+    --gradient-primary: linear-gradient(135deg, hsl(243 58% 52%), hsl(258 66% 60%), hsl(248 78% 70%));
+    --gradient-accent:  linear-gradient(135deg, hsl(197 70% 38%), hsl(243 58% 52%));
 
-    /* Gradients (CSS custom properties) */
-    --gradient-primary: linear-gradient(135deg, hsl(239 84% 67%), hsl(263 70% 64%), hsl(250 82% 76%));
-    --gradient-accent: linear-gradient(135deg, hsl(188 92% 53%), hsl(239 84% 67%));
-    --glow-primary: 0 0 20px hsl(239 84% 67% / 0.3);
-    --glow-accent: 0 0 20px hsl(188 92% 53% / 0.25);
+    /* ── Shadows ── */
+    --shadow-card:        0 1px 3px 0 rgb(0 0 0 / 0.06), 0 4px 16px -4px rgb(0 0 0 / 0.05);
+    --shadow-card-hover:  0 2px 8px 0 rgb(0 0 0 / 0.09), 0 8px 24px -8px rgb(0 0 0 / 0.07);
+    --shadow-primary:     0 4px 20px -2px rgb(67 56 202 / 0.38);
+    --shadow-primary-lg:  0 8px 32px -4px rgb(67 56 202 / 0.45);
 
-    /* Sidebar */
-    --sidebar-background: 225 35% 7%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 239 84% 67%;
+    /* ── Sidebar ── */
+    --sidebar-background: 220 15% 97%;
+    --sidebar-foreground: 220 28% 10%;
+    --sidebar-primary:    243 58% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 30% 16%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 222 30% 21%;
-    --sidebar-ring: 239 84% 67%;
+    --sidebar-accent:     220 15% 94%;
+    --sidebar-accent-foreground: 220 28% 10%;
+    --sidebar-border:     220 14% 90%;
+    --sidebar-ring:       243 58% 52%;
   }
 }
 
@@ -73,46 +81,39 @@
   * {
     @apply border-border;
   }
-
   html, body, #root {
     height: 100%;
     overflow: hidden;
   }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'DM Sans', system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-
   .font-mono {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
 }
 
 @layer utilities {
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
-  .gradient-accent {
-    background: var(--gradient-accent);
-  }
+  .gradient-primary  { background: var(--gradient-primary); }
+  .gradient-accent   { background: var(--gradient-accent);  }
+
   .text-gradient-primary {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .glow-primary {
-    box-shadow: var(--glow-primary);
-  }
-  .glow-accent {
-    box-shadow: var(--glow-accent);
-  }
+
+  .shadow-card       { box-shadow: var(--shadow-card); }
+  .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+  .shadow-primary    { box-shadow: var(--shadow-primary); }
+  .shadow-primary-lg { box-shadow: var(--shadow-primary-lg); }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }
