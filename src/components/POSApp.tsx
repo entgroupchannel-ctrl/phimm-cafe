@@ -12,10 +12,11 @@ import { AIScreen } from "./pos/AIScreen";
 import { NutritionScreen } from "./pos/NutritionScreen";
 import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
+import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { menuItems } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
 
-type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "settings";
+type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "order",     label: "🛒 ออเดอร์"   },
@@ -30,6 +31,7 @@ const NAV: { key: Screen; label: string }[] = [
   { key: "nutrition", label: "🥗 โภชนาการ"   },
   { key: "kiosk",     label: "🖥️ Kiosk"      },
   { key: "omni",      label: "🌐 Omnichannel" },
+  { key: "qr",        label: "📲 QR โต๊ะ"     },
   { key: "settings",  label: "⚙️"            },
 ];
 
@@ -108,6 +110,7 @@ export function POSApp() {
         {screen === "nutrition" && <NutritionScreen />}
         {screen === "kiosk"     && <KioskScreen />}
         {screen === "omni"      && <OmnichannelScreen />}
+        {screen === "qr"        && <QRGeneratorScreen />}
         {screen === "settings"  && <SettingsScreen />}
       </main>
     </div>
