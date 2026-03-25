@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import phimmLogo from "@/assets/phimm-logo.png";
 import { OrderScreen, CartItem } from "./pos/OrderScreen";
 import { PaymentScreen } from "./pos/PaymentScreen";
 import { DashboardScreen } from "./pos/DashboardScreen";
@@ -169,14 +170,13 @@ export function POSApp() {
         style={{ boxShadow: "0 1px 0 hsl(var(--border)/0.8)" }}>
 
         {/* Logo */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center text-white font-bold text-[15px] shadow-primary">
-            P
+        <div className="flex items-center gap-2 shrink-0">
+          <img src={phimmLogo} alt="Phimm Cafe" width={36} height={36}
+            className="w-9 h-9 object-contain" />
+          <div>
+            <span className="text-[15px] font-bold tracking-tight text-foreground select-none">Phimm Cafe</span>
+            <span className="block text-[9px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">POS System</span>
           </div>
-          <span className="text-[16px] font-bold tracking-tight text-foreground select-none">POSAI</span>
-          <span className="badge-apple bg-primary/10 text-primary border border-primary/20 text-[10px]">
-            Phase 1
-          </span>
         </div>
 
         {/* Grouped compact nav */}
@@ -195,7 +195,7 @@ export function POSApp() {
             <span className="w-1.5 h-1.5 rounded-full bg-success shadow-[0_0_5px_hsl(var(--success)/0.7)] animate-pulse-glow" />
             <span className="hidden sm:inline">ออนไลน์</span>
           </span>
-          <span className="text-[12px] font-medium text-muted-foreground hidden md:inline">กินดี สุขุมวิท</span>
+          <span className="text-[12px] font-medium text-muted-foreground hidden md:inline">Phimm Cafe</span>
           <Clock />
         </div>
       </header>
