@@ -1,4 +1,5 @@
 import { useState } from "react";
+import phimmLogo from "@/assets/phimm-logo.png";
 import { cn } from "@/lib/utils";
 
 // ── Data ──────────────────────────────────────────────────
