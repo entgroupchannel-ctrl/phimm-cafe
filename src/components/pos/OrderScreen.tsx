@@ -86,8 +86,8 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
 
         {/* Menu Grid */}
         <div
-          className="grid gap-3 overflow-y-auto flex-1 scrollbar-hide pb-2"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}
+          className="grid gap-2 overflow-y-auto flex-1 scrollbar-hide pb-2 content-start"
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
         >
           {filtered.map((item) => {
             const inCart = cart.find((c) => c.id === item.id);
@@ -96,25 +96,25 @@ export function OrderScreen({ cart, setCart, onPay }: OrderScreenProps) {
                 key={item.id}
                 onClick={() => addToCart(item)}
                 className={cn(
-                  "relative bg-card border rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-150",
+                  "relative bg-card border rounded-xl px-3 py-3 flex flex-col items-center gap-1.5 transition-all duration-150 h-[110px] justify-center",
                   inCart
                     ? "border-primary/40 shadow-primary bg-primary/[0.03]"
                     : "border-border hover:border-border-light hover:shadow-card-hover shadow-card"
                 )}
               >
                 {inCart && (
-                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[11px] font-extrabold flex items-center justify-center shadow-primary z-10">
+                  <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full gradient-primary text-white text-[10px] font-extrabold flex items-center justify-center shadow-primary z-10">
                     {inCart.qty}
                   </span>
                 )}
                 {item.popular && (
-                  <span className="absolute top-2 left-2">
+                  <span className="absolute top-1.5 left-1.5">
                     <POSBadge color="warning" className="text-[9px] py-px px-1.5">HOT</POSBadge>
                   </span>
                 )}
-                <span className="text-[38px] mt-1">{item.img}</span>
-                <span className="text-[13px] font-semibold text-center leading-tight text-foreground">{item.name}</span>
-                <span className="font-mono text-[15px] font-bold text-accent">฿{item.price}</span>
+                <span className="text-[28px] leading-none">{item.img}</span>
+                <span className="text-[12px] font-semibold text-center leading-tight text-foreground">{item.name}</span>
+                <span className="font-mono text-[13px] font-bold text-accent">฿{item.price}</span>
               </button>
             );
           })}
