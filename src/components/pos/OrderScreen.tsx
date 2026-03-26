@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Search, Minus, Plus, Trash2, ChefHat, Receipt, ChevronLeft, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export type CartItem = {
   id: string;
@@ -524,24 +524,18 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
 
       {/* ─── Customization Modal ──────────────────────────────── */}
       <Dialog open={!!customizeItem} onOpenChange={open => { if (!open) setCustomizeItem(null); }}>
-        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl border-border bg-[hsl(var(--surface))]">
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl border-border bg-[hsl(var(--surface))]" aria-describedby={undefined}>
           {customizeItem && (
             <>
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <span className="text-[32px]">{customizeItem.img}</span>
-                  <div>
-                    <div className="text-[16px] font-black text-foreground">{customizeItem.name}</div>
-                    <div className="text-[13px] font-mono font-bold tabular-nums" style={{ color: "hsl(var(--primary))" }}>
-                      ฿{customizeItem.price.toLocaleString()}.00
-                    </div>
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                <span className="text-[32px]">{customizeItem.img}</span>
+                <div>
+                  <DialogTitle className="text-[16px] font-black text-foreground">{customizeItem.name}</DialogTitle>
+                  <div className="text-[13px] font-mono font-bold tabular-nums" style={{ color: "hsl(var(--primary))" }}>
+                    ฿{customizeItem.price.toLocaleString()}.00
                   </div>
                 </div>
-                <button onClick={() => setCustomizeItem(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                  <X size={16} />
-                </button>
               </div>
 
               {/* Option Groups */}
