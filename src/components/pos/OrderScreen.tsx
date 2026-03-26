@@ -66,138 +66,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
   return (
     <div className="flex flex-1 overflow-hidden bg-background">
 
-      {/* ─── LEFT: Current order panel ─────────────────────── */}
-      <div className="w-[340px] shrink-0 flex flex-col bg-[hsl(var(--surface))] border-r border-border">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            {/* Back button */}
-            <button
-              onClick={onBack}
-              className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
-              title="กลับหน้าโต๊ะ"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
-                <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
-              </div>
-              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">👥 4 คน</span>
-                <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
-                <span>{totalQty} รายการ</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-              🔗 Party
-            </button>
-            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-              🔄 ย้ายโต๊ะ
-            </button>
-          </div>
-        </div>
-
-        {/* Order list */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {/* Already served items */}
-          {SERVED_ITEMS.map(item => (
-            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
-                <div className="text-[11px] text-muted-foreground">{item.nameEn}</div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(142_64%_38%/0.12)] text-[hsl(142_64%_35%)] border border-[hsl(142_64%_38%/0.25)]">
-                  เสิร์ฟแล้ว
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground text-[12px] font-bold">
-                  −
-                </span>
-                <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
-                <span className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground text-[12px] font-bold">
-                  +
-                </span>
-              </div>
-              <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">
-                ฿{(item.price * item.qty).toLocaleString()}.00
-              </div>
-            </div>
-          ))}
-
-          {/* New cart items */}
-          {cart.map(item => (
-            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-[hsl(var(--primary)/0.03)]">
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
-                <div className="text-[11px] text-muted-foreground">฿{item.price} / รายการ</div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)]">
-                  ใหม่
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => removeFromCart(item.id)}
-                  className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))] hover:border-[hsl(var(--danger)/0.3)] transition-colors">
-                  <Minus size={11} />
-                </button>
-                <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
-                <button onClick={() => addToCart(item)}
-                  className="w-6 h-6 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_1px_4px_hsl(var(--primary)/0.35)]">
-                  <Plus size={11} />
-                </button>
-              </div>
-              <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">
-                ฿{(item.price * item.qty).toLocaleString()}.00
-              </div>
-              <button onClick={() => deleteFromCart(item.id)} className="text-muted-foreground/40 hover:text-[hsl(var(--danger))] transition-colors">
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-
-          {cart.length === 0 && SERVED_ITEMS.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <div className="text-4xl mb-3 opacity-20">🛒</div>
-              <div className="text-[12px]">แตะเมนูเพื่อเพิ่มออเดอร์</div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 pt-3 pb-4 border-t border-border/60 space-y-3 bg-[hsl(var(--surface))]">
-          <div className="flex justify-between items-baseline">
-            <span className="text-[12px] text-muted-foreground">ยอดรวม / Subtotal</span>
-            <span className="font-mono text-[22px] font-black tabular-nums text-foreground">
-              ฿{grandTotal.toLocaleString()}.00
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="flex-1 h-12 rounded-2xl bg-[hsl(211_100%_50%/0.12)] text-primary border border-[hsl(211_100%_50%/0.25)] font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-[hsl(211_100%_50%/0.18)] transition-colors active:scale-[0.98]"
-            >
-              <ChefHat size={16} />
-              ส่งครัว / Send to Kitchen
-            </button>
-            <button
-              onClick={onPay}
-              className="flex-1 h-12 rounded-2xl bg-[hsl(38_92%_50%)] text-white font-semibold text-[13px] flex items-center justify-center gap-2 shadow-[0_4px_16px_hsl(38_92%_50%/0.35)] hover:bg-[hsl(38_92%_45%)] transition-colors active:scale-[0.98]"
-            >
-              <Receipt size={16} />
-              เช็คบิล / Bill
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── RIGHT: Menu panel ─────────────────────────────── */}
+      {/* ─── LEFT: Menu panel ─────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
 
         {/* Search bar */}
@@ -273,7 +142,6 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
                     <span className="font-mono font-bold text-[14px] tabular-nums" style={{ color: "hsl(var(--primary))" }}>
                       ฿{item.price}.00
                     </span>
-                    {/* Estimated time placeholder */}
                     <span className="text-[10px] text-muted-foreground/60">
                       {item.popular ? "10น." : "5น."}
                     </span>
@@ -281,6 +149,133 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── RIGHT: Current order panel ────────────────────── */}
+      <div className="w-[340px] shrink-0 flex flex-col bg-[hsl(var(--surface))] border-l border-border">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            {/* Back button */}
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
+              title="กลับหน้าโต๊ะ"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
+                <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">👥 4 คน</span>
+                <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
+                <span>{totalQty} รายการ</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+              🔗 Party
+            </button>
+            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+              🔄 ย้ายโต๊ะ
+            </button>
+          </div>
+        </div>
+
+        {/* Order list */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          {/* Already served items */}
+          {SERVED_ITEMS.map(item => (
+            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
+                <div className="text-[11px] text-muted-foreground">{item.nameEn}</div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(142_64%_38%/0.12)] text-[hsl(142_64%_35%)] border border-[hsl(142_64%_38%/0.25)]">
+                  เสิร์ฟแล้ว
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground text-[12px] font-bold">−</span>
+                <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
+                <span className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground text-[12px] font-bold">+</span>
+              </div>
+              <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">
+                ฿{(item.price * item.qty).toLocaleString()}.00
+              </div>
+            </div>
+          ))}
+
+          {/* New cart items */}
+          {cart.map(item => (
+            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-[hsl(var(--primary)/0.03)]">
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
+                <div className="text-[11px] text-muted-foreground">฿{item.price} / รายการ</div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)]">
+                  ใหม่
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => removeFromCart(item.id)}
+                  className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))] hover:border-[hsl(var(--danger)/0.3)] transition-colors">
+                  <Minus size={11} />
+                </button>
+                <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
+                <button onClick={() => addToCart(item)}
+                  className="w-6 h-6 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_1px_4px_hsl(var(--primary)/0.35)]">
+                  <Plus size={11} />
+                </button>
+              </div>
+              <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">
+                ฿{(item.price * item.qty).toLocaleString()}.00
+              </div>
+              <button onClick={() => deleteFromCart(item.id)} className="text-muted-foreground/40 hover:text-[hsl(var(--danger))] transition-colors">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+
+          {cart.length === 0 && SERVED_ITEMS.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="text-4xl mb-3 opacity-20">🛒</div>
+              <div className="text-[12px]">แตะเมนูเพื่อเพิ่มออเดอร์</div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pt-3 pb-4 border-t border-border/60 space-y-3 bg-[hsl(var(--surface))]">
+          <div className="flex justify-between items-baseline">
+            <span className="text-[12px] text-muted-foreground">ยอดรวม / Subtotal</span>
+            <span className="font-mono text-[22px] font-black tabular-nums text-foreground">
+              ฿{grandTotal.toLocaleString()}.00
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="flex-1 h-12 rounded-2xl bg-[hsl(211_100%_50%/0.12)] text-primary border border-[hsl(211_100%_50%/0.25)] font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-[hsl(211_100%_50%/0.18)] transition-colors active:scale-[0.98]"
+            >
+              <ChefHat size={16} />
+              ส่งครัว / Send to Kitchen
+            </button>
+            <button
+              onClick={onPay}
+              className="flex-1 h-12 rounded-2xl bg-[hsl(38_92%_50%)] text-white font-semibold text-[13px] flex items-center justify-center gap-2 shadow-[0_4px_16px_hsl(38_92%_50%/0.35)] hover:bg-[hsl(38_92%_45%)] transition-colors active:scale-[0.98]"
+            >
+              <Receipt size={16} />
+              เช็คบิล / Bill
+            </button>
           </div>
         </div>
       </div>
