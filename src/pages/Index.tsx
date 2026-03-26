@@ -1,5 +1,10 @@
+import { AuthProvider } from "@/contexts/AuthContext";
 import { POSApp } from "@/components/POSApp";
 
 export default function Index() {
-  return <POSApp />;
+  return (
+    <AuthProvider>
+      <POSApp />
+    </AuthProvider>
+  );
 }
