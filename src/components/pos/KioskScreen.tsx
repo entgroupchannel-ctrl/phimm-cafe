@@ -261,7 +261,7 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
     if (groups && groups.length > 0) {
       setCustomizing(item);
     } else {
-      addToCart({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty: 1, note: '', options: [], optionsText: '', priceAdd: 0, cartId: 0 });
+      addToCart({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty: 1, note: '', options: [], optionsText: '', priceAdd: 0 });
     }
   };
 
