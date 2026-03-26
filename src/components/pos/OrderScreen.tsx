@@ -71,15 +71,25 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
-              <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
-            </div>
-            <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1">👥 4 คน</span>
-              <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
-              <span>{totalQty} รายการ</span>
+          <div className="flex items-center gap-2.5">
+            {/* Back button */}
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
+              title="กลับหน้าโต๊ะ"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
+                <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">👥 4 คน</span>
+                <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
+                <span>{totalQty} รายการ</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
