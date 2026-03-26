@@ -9,6 +9,7 @@ interface OrderScreenProps {
   cart: CartItem[];
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   onPay?: () => void;
+  onBack?: () => void;
   tableLabel?: string; // "1", "2", ... from TableMapScreen
 }
 
