@@ -216,7 +216,7 @@ export function POSApp() {
       {/* ── Content ── */}
       <main className="flex flex-1 overflow-hidden bg-background min-w-0">
         {screen === "tables"    && <TableMapScreen onSelectTable={handleSelectTable} />}
-        {screen === "order"     && <OrderScreen cart={cart} setCart={setCart} onPay={() => setScreen("payment")} tableLabel={activeTable} />}
+        {screen === "order"     && <OrderScreen cart={cart} setCart={setCart} onPay={() => setScreen("payment")} onBack={() => setScreen("tables")} tableLabel={activeTable} />}
         {screen === "payment"   && <PaymentScreen cart={cart} onSuccess={() => setScreen("tables")} />}
         {screen === "kds"       && <KDSScreen />}
         {screen === "menu"      && <MenuMgmtScreen />}

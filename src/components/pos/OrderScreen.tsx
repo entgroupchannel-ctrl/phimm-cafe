@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { menuItems, MenuItem } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
-import { Search, Minus, Plus, Trash2, ChefHat, Receipt } from "lucide-react";
+import { Search, Minus, Plus, Trash2, ChefHat, Receipt, ChevronLeft } from "lucide-react";
 
 export type CartItem = MenuItem & { qty: number };
 
@@ -9,6 +9,7 @@ interface OrderScreenProps {
   cart: CartItem[];
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   onPay?: () => void;
+  onBack?: () => void;
   tableLabel?: string; // "1", "2", ... from TableMapScreen
 }
 
@@ -30,7 +31,7 @@ const SERVED_ITEMS = [
   { id: 106, name: "ยำวุ้นเส้นทะเล",      nameEn: "Seafood Glass Noodle Salad",price: 220, qty: 1, status: "served" },
 ];
 
-export function OrderScreen({ cart, setCart, onPay, tableLabel = "3" }: OrderScreenProps) {
+export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: OrderScreenProps) {
   const [activeCat, setActiveCat] = useState("ทั้งหมด");
   const [search, setSearch]       = useState("");
 
@@ -70,15 +71,25 @@ export function OrderScreen({ cart, setCart, onPay, tableLabel = "3" }: OrderScr
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
-              <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
-            </div>
-            <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1">👥 4 คน</span>
-              <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
-              <span>{totalQty} รายการ</span>
+          <div className="flex items-center gap-2.5">
+            {/* Back button */}
+            <button
+              onClick={onBack}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
+              title="กลับหน้าโต๊ะ"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[16px] font-black text-foreground">โต๊ะ {tableLabel}</span>
+                <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">👥 4 คน</span>
+                <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
+                <span>{totalQty} รายการ</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
