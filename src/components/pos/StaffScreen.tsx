@@ -1,531 +1,649 @@
-import { useState, useMemo } from "react";
-import { POSBadge } from "./POSBadge";
-import { POSStatCard } from "./POSStatCard";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Download, Plus, Clock, Users, DollarSign } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-// ── Data ─────────────────────────────────────────────────────
-const STAFF = [
-  { id: 1, name: "สมศักดิ์", role: "พ่อครัว",           hourly: 75, maxHr: 48, skills: ["ผัด","ต้ม","ทอด"],           avatar: "👨‍🍳", pref: [0,0,0,0,0,1,1] },
-  { id: 2, name: "อรทัย",    role: "แคชเชียร์",         hourly: 60, maxHr: 48, skills: ["POS","การเงิน"],              avatar: "💁‍♀️", pref: [0,0,0,0,0,0,1] },
-  { id: 3, name: "ณัฐ",      role: "เสิร์ฟ",             hourly: 55, maxHr: 40, skills: ["บริการ","บาร์เครื่องดื่ม"],  avatar: "🧑‍🍳", pref: [0,0,1,0,0,0,0] },
-  { id: 4, name: "พลอย",     role: "เสิร์ฟ",             hourly: 55, maxHr: 40, skills: ["บริการ","QR Order"],         avatar: "👩",   pref: [1,0,0,0,0,0,0] },
-  { id: 5, name: "ธีร์",     role: "พ่อครัว",           hourly: 70, maxHr: 48, skills: ["ผัด","ย่าง","ของหวาน"],     avatar: "👨‍🍳", pref: [0,0,0,0,1,0,0] },
-  { id: 6, name: "มิน",      role: "เสิร์ฟ (Part-time)", hourly: 50, maxHr: 24, skills: ["บริการ"],                    avatar: "🧑",   pref: [0,0,0,1,1,0,0] },
-];
+const DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const DAYS_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+const ROLE_COLORS: Record<string, string> = {
+  owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  manager: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+  chef: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  waiter: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800",
+  cashier: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+};
 
-const DAYS       = ["จันทร์","อังคาร","พุธ","พฤหัส","ศุกร์","เสาร์","อาทิตย์"];
-const DAYS_SHORT = ["จ.","อ.","พ.","พฤ.","ศ.","ส.","อา."];
+const AVATARS = ["👨‍🍳", "👩‍🍳", "👨‍💼", "👩‍💼", "🧑‍🤝‍🧑", "👤", "🧑‍🍳", "💁‍♀️", "🧑"];
 
-const SHIFTS = [
-  { label: "เช้า",  time: "09:00-14:00", hours: 5, color: "accent"  as const },
-  { label: "บ่าย",  time: "14:00-18:00", hours: 4, color: "primary" as const },
-  { label: "เย็น",  time: "18:00-22:00", hours: 4, color: "warning" as const },
-];
-
-const DEMAND = [
-  { day:"จ.",  customers:[18,22,35,28,14,12,8], revenue:26800 },
-  { day:"อ.",  customers:[20,25,38,30,16,14,9], revenue:29400 },
-  { day:"พ.",  customers:[16,20,30,24,12,10,7], revenue:23100 },
-  { day:"พฤ.", customers:[22,28,42,35,20,18,12], revenue:34200 },
-  { day:"ศ.",  customers:[28,35,55,48,32,28,18], revenue:45600 },
-  { day:"ส.",  customers:[32,40,52,45,35,30,20], revenue:42800 },
-  { day:"อา.", customers:[25,30,40,32,22,18,12], revenue:31500 },
-];
-
-const HEAT_HOURS = ["09","10","11","12","13","14","15","16","17","18","19","20","21"];
-
-type RoleKey = keyof typeof ROLE_COLOR;
-const ROLE_COLOR = {
-  "พ่อครัว":           "danger",
-  "แคชเชียร์":         "primary",
-  "เสิร์ฟ":             "accent",
-  "เสิร์ฟ (Part-time)": "warning",
-} as const;
-
-// ── Helper ───────────────────────────────────────────────────
-function roleColor(role: string): "danger"|"primary"|"accent"|"warning" {
-  return (ROLE_COLOR as Record<string,"danger"|"primary"|"accent"|"warning">)[role] ?? "primary";
+function getRoleColor(roleName: string) {
+  if (roleName.includes('owner') || roleName.includes('เจ้าของ')) return ROLE_COLORS.owner;
+  if (roleName.includes('manager') || roleName.includes('ผู้จัดการ')) return ROLE_COLORS.manager;
+  if (roleName.includes('chef') || roleName.includes('ครัว') || roleName.includes('พ่อครัว')) return ROLE_COLORS.chef;
+  if (roleName.includes('waiter') || roleName.includes('เสิร์ฟ')) return ROLE_COLORS.waiter;
+  if (roleName.includes('cashier') || roleName.includes('แคชเชียร์')) return ROLE_COLORS.cashier;
+  return ROLE_COLORS.waiter;
 }
 
-// ════════════════════════════════════════════════
-// TAB 1 — AI Auto-Schedule
-// ════════════════════════════════════════════════
-function AIScheduleTab() {
-  const [laborTarget, setLaborTarget] = useState(28);
-  const [selectedDay, setSelectedDay] = useState(4);
+// ═══════════════════════════════════════════
+// TAB 1: Staff List + Clock-in/out
+// ═══════════════════════════════════════════
+function StaffListTab() {
+  const { toast } = useToast();
+  const [staff, setStaff] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editStaff, setEditStaff] = useState<any | null>(null);
+  const [revealPins, setRevealPins] = useState<Set<string>>(new Set());
 
-  const aiSchedule = useMemo(() => {
-    return DAYS_SHORT.map((day, di) => {
-      const demand = DEMAND[di];
-      const totalCust = demand.customers.reduce((a, b) => a + b, 0);
-      const needEvening = totalCust > 200 ? 5 : totalCust > 150 ? 4 : 3;
+  // Form state
+  const [formName, setFormName] = useState("");
+  const [formNickname, setFormNickname] = useState("");
+  const [formRoleId, setFormRoleId] = useState("");
+  const [formPin, setFormPin] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formRate, setFormRate] = useState("0");
+  const [formEmoji, setFormEmoji] = useState("👤");
+  const [roles, setRoles] = useState<any[]>([]);
 
-      const shifts = [
-        { shift: "เช้า",  staff: STAFF.filter(s => s.role.includes("พ่อครัว")).slice(0,1).map(s=>s.id)
-            .concat(STAFF.filter(s => s.role.includes("เสิร์ฟ")||s.role.includes("แคชเชียร์")).slice(0, totalCust>150 ? 2 : 1).map(s=>s.id)) },
-        { shift: "บ่าย",  staff: STAFF.filter(s => s.role.includes("พ่อครัว")).slice(0,1).map(s=>s.id)
-            .concat(STAFF.filter(s => s.role.includes("แคชเชียร์")).map(s=>s.id))
-            .concat(di >= 4 ? [6] : []) },
-        { shift: "เย็น",  staff: STAFF.filter(s => !s.role.includes("Part-time")).slice(0, needEvening).map(s=>s.id)
-            .concat(di >= 4 ? [6] : []) },
-      ];
+  useEffect(() => { fetchAll(); }, []);
 
-      const laborCost = shifts.reduce((sum, sh, si) =>
-        sum + sh.staff.reduce((s2, sid) => s2 + (STAFF.find(st => st.id === sid)?.hourly ?? 0) * SHIFTS[si].hours, 0), 0);
-      const totalHours = shifts.reduce((sum, sh, si) => sum + sh.staff.length * SHIFTS[si].hours, 0);
-      const laborPct = demand.revenue > 0 ? (laborCost / demand.revenue) * 100 : 0;
+  async function fetchAll() {
+    setLoading(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const [staffRes, shiftsRes, rolesRes] = await Promise.all([
+      supabase.from('staff').select('*, roles(name, label)').order('name'),
+      supabase.from('staff_sessions').select('*').gte('clock_in', `${today}T00:00:00`),
+      supabase.from('roles').select('*').order('sort_order'),
+    ]);
+    setStaff(staffRes.data || []);
+    setShifts(shiftsRes.data || []);
+    setRoles(rolesRes.data || []);
+    setLoading(false);
+  }
 
-      return { day, shifts, totalHours, laborCost, laborPct, revenue: demand.revenue, demand: totalCust };
-    });
-  }, [laborTarget]);
+  function getActiveShift(staffId: string) {
+    return shifts.find(s => s.staff_id === staffId && !s.clock_out);
+  }
 
-  const sel = aiSchedule[selectedDay];
-  const weekLaborCost = aiSchedule.reduce((s, d) => s + d.laborCost, 0);
-  const avgLaborPct   = aiSchedule.reduce((s, d) => s + d.laborPct, 0) / 7;
-  const weekHours     = aiSchedule.reduce((s, d) => s + d.totalHours, 0);
+  async function clockIn(staffId: string) {
+    const { error } = await supabase.from('staff_sessions').insert({ staff_id: staffId });
+    if (error) { toast({ title: "❌ Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "🟢 ลงเวลาเข้าแล้ว" });
+    fetchAll();
+  }
 
-  return (
-    <div className="space-y-4">
-      {/* Labor target */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="flex items-center gap-5 flex-wrap">
-          <div className="flex-1 min-w-[280px]">
-            <div className="text-[13px] font-semibold text-muted-foreground mb-2">
-              🎯 เป้าหมายต้นทุนแรงงาน:{" "}
-              <span className={cn("font-mono text-[22px] font-extrabold tabular-nums",
-                laborTarget > 30 ? "text-danger" : laborTarget > 25 ? "text-warning" : "text-success")}>
-                {laborTarget}%
-              </span>
-              <span className="text-[12px] text-muted-foreground/60"> ของยอดขาย</span>
-            </div>
-            <input type="range" min={18} max={38} value={laborTarget}
-              onChange={e => setLaborTarget(+e.target.value)}
-              className="w-full accent-primary h-1.5 cursor-pointer" />
-            <div className="flex justify-between text-[10px] text-muted-foreground/50 mt-1">
-              <span>18% (ตึง)</span><span>25% (เหมาะ)</span><span>38% (ใจดี)</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            {[
-              { label:"ค่าแรง/สัปดาห์", value:`฿${weekLaborCost.toLocaleString()}`, c:"accent"   as const },
-              { label:"ค่าแรงเฉลี่ย",   value:`${avgLaborPct.toFixed(1)}%`,         c: avgLaborPct > laborTarget ? "danger" as const : "success" as const },
-              { label:"ชม. รวม/สัปดาห์", value:`${weekHours}`,                       c:"primary"  as const },
-            ].map((s, i) => (
-              <div key={i} className="bg-surface-alt rounded-xl px-4 py-3 border border-border text-center">
-                <div className="text-[10px] text-muted-foreground mb-1">{s.label}</div>
-                <div className={cn("font-mono text-[20px] font-extrabold tabular-nums",
-                  s.c === "accent" ? "text-accent" : s.c === "danger" ? "text-danger" : s.c === "success" ? "text-success" : "text-primary")}>
-                  {s.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+  async function clockOut(staffId: string) {
+    const shift = getActiveShift(staffId);
+    if (!shift) return;
+    const now = new Date();
+    const clockIn = new Date(shift.clock_in);
+    const hours = (now.getTime() - clockIn.getTime()) / 3600000;
+    const { error } = await supabase.from('staff_sessions')
+      .update({ clock_out: now.toISOString(), total_hours: Math.round(hours * 100) / 100 })
+      .eq('id', shift.id);
+    if (error) { toast({ title: "❌ Error", description: error.message, variant: "destructive" }); return; }
+    const s = staff.find(st => st.id === staffId);
+    const cost = Math.round(hours * Number(s?.hourly_rate || 0));
+    toast({ title: "🔴 ลงเวลาออกแล้ว", description: `ทำงาน ${hours.toFixed(1)} ชม. = ฿${cost.toLocaleString()}` });
+    fetchAll();
+  }
 
-      {/* Schedule grid */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-[15px] font-bold text-foreground">📅 ตารางงานอัตโนมัติ (สัปดาห์หน้า)</div>
-          <div className="flex gap-2">
-            <POSBadge color="success" glow>🤖 AI จัดให้</POSBadge>
-            <POSBadge color="accent">Accuracy 94%</POSBadge>
-          </div>
-        </div>
+  function openAdd() {
+    setEditStaff(null);
+    setFormName(""); setFormNickname(""); setFormRoleId(roles[0]?.id || "");
+    setFormPin(""); setFormPhone(""); setFormRate("0"); setFormEmoji("👤");
+    setShowAdd(true);
+  }
 
-        {/* Day pills */}
-        <div className="flex gap-1.5 mb-4">
-          {DAYS_SHORT.map((d, i) => {
-            const data = aiSchedule[i];
-            const over = data.laborPct > laborTarget;
-            return (
-              <button key={d} onClick={() => setSelectedDay(i)}
-                className={cn("flex-1 py-2.5 rounded-xl text-center border transition-all",
-                  selectedDay === i
-                    ? "border-primary/50 bg-primary/10 text-foreground"
-                    : "border-border bg-surface-alt text-muted-foreground hover:border-border-light")}>
-                <div className="text-[13px] font-bold">{d}</div>
-                <div className={cn("text-[10px] font-bold tabular-nums", over ? "text-danger" : "text-success")}>
-                  {data.laborPct.toFixed(1)}%
-                </div>
-                <div className="text-[9px] text-muted-foreground/60 font-mono">฿{(data.revenue/1000).toFixed(0)}k</div>
-              </button>
-            );
-          })}
-        </div>
+  function openEdit(s: any) {
+    setEditStaff(s);
+    setFormName(s.name); setFormNickname(s.nickname || ""); setFormRoleId(s.role_id);
+    setFormPin(s.pin || ""); setFormPhone(s.phone || ""); setFormRate(String(s.hourly_rate || 0));
+    setFormEmoji(s.avatar_emoji || "👤");
+    setShowAdd(true);
+  }
 
-        {/* Selected day detail */}
-        <div className="bg-surface-alt rounded-xl p-4 border border-border">
-          <div className="flex justify-between items-center mb-4">
-            <div className="text-[16px] font-extrabold text-foreground">{DAYS[selectedDay]}</div>
-            <div className="flex gap-4">
-              <div className="text-right">
-                <div className="text-[10px] text-muted-foreground">ยอดขายคาด</div>
-                <div className="font-mono text-[16px] font-extrabold text-accent tabular-nums">฿{sel.revenue.toLocaleString()}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] text-muted-foreground">ค่าแรง</div>
-                <div className={cn("font-mono text-[16px] font-extrabold tabular-nums",
-                  sel.laborPct > laborTarget ? "text-danger" : "text-success")}>
-                  ฿{sel.laborCost.toLocaleString()} ({sel.laborPct.toFixed(1)}%)
-                </div>
-              </div>
-            </div>
-          </div>
+  async function saveStaff() {
+    const payload: any = {
+      name: formName, nickname: formNickname, role_id: formRoleId,
+      pin: formPin, phone: formPhone, hourly_rate: Number(formRate), avatar_emoji: formEmoji,
+    };
+    if (editStaff) {
+      await supabase.from('staff').update(payload).eq('id', editStaff.id);
+      toast({ title: "✅ อัปเดตแล้ว" });
+    } else {
+      await supabase.from('staff').insert(payload);
+      toast({ title: "✅ เพิ่มพนักงานแล้ว" });
+    }
+    setShowAdd(false);
+    fetchAll();
+  }
 
-          {SHIFTS.map((shift, si) => {
-            const assignedIds = sel.shifts[si]?.staff ?? [];
-            const assigned = assignedIds.map(id => STAFF.find(s => s.id === id)).filter(Boolean) as typeof STAFF;
-            return (
-              <div key={si} className="flex items-center gap-3 py-3 border-t border-border first:border-t-0">
-                <div className="w-[90px] shrink-0">
-                  <POSBadge color={shift.color}>{shift.label}</POSBadge>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{shift.time}</div>
-                </div>
-                <div className="flex-1 flex gap-2 flex-wrap">
-                  {assigned.length > 0 ? assigned.map(s => (
-                    <div key={s.id} className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border",
-                      roleColor(s.role) === "danger"   ? "bg-danger/8   border-danger/20"   :
-                      roleColor(s.role) === "accent"   ? "bg-accent/8   border-accent/20"   :
-                      roleColor(s.role) === "warning"  ? "bg-warning/8  border-warning/20"  :
-                                                          "bg-primary/8  border-primary/20"
-                    )}>
-                      <span className="text-[16px]">{s.avatar}</span>
-                      <div>
-                        <div className="text-[12px] font-bold text-foreground">{s.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{s.role}</div>
-                      </div>
-                    </div>
-                  )) : <span className="text-[12px] text-muted-foreground/40">— ไม่มีกะนี้ —</span>}
-                </div>
-                <div className="font-mono text-[12px] text-muted-foreground text-right shrink-0 w-12">
-                  {assigned.length} คน<br/>{shift.hours} ชม.
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Demand heatmap */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="text-[14px] font-bold text-foreground mb-4">🔥 Demand Heatmap — ลูกค้าต่อชั่วโมง</div>
-        <div className="overflow-x-auto">
-          <div className="grid gap-0.5 text-[10px] min-w-[480px]" style={{ gridTemplateColumns: "44px repeat(7, 1fr)" }}>
-            <div />
-            {DAYS_SHORT.map(d => (
-              <div key={d} className="text-center font-bold text-muted-foreground py-1">{d}</div>
-            ))}
-            {HEAT_HOURS.map((hr, hi) => {
-              const hourIdx = Math.min(hi, 6);
-              return [
-                <div key={`h${hi}`} className="font-mono text-muted-foreground/50 text-right py-1.5 pr-1">{hr}:00</div>,
-                ...DAYS_SHORT.map((_, di) => {
-                  const val = DEMAND[di].customers[Math.min(hourIdx, DEMAND[di].customers.length - 1)];
-                  const intensity = val / 55;
-                  return (
-                    <div key={`${hi}-${di}`}
-                      className={cn("text-center py-1.5 rounded font-mono font-semibold tabular-nums",
-                        intensity > 0.7 ? "bg-danger/25 text-danger"    :
-                        intensity > 0.5 ? "bg-warning/25 text-warning"  :
-                        intensity > 0.3 ? "bg-primary/20 text-primary"  :
-                                          "bg-primary/8 text-muted-foreground/50"
-                      )}>
-                      {val}
-                    </div>
-                  );
-                }),
-              ];
-            })}
-          </div>
-        </div>
-        <div className="flex gap-4 justify-center mt-3 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="w-3 h-2.5 rounded bg-primary/20 inline-block"/>น้อย</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-2.5 rounded bg-warning/25 inline-block"/>ปานกลาง</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-2.5 rounded bg-danger/25 inline-block"/>พีค</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════
-// TAB 2 — OT & Cost Alerts
-// ════════════════════════════════════════════════
-const WEEKLY_HOURS = [
-  { ...STAFF[0], scheduled: 46, actual: 48.5, ot: 0.5, otCost:  56 },
-  { ...STAFF[1], scheduled: 44, actual: 44,   ot: 0,   otCost:   0 },
-  { ...STAFF[2], scheduled: 38, actual: 42,   ot: 2,   otCost: 165 },
-  { ...STAFF[3], scheduled: 36, actual: 36,   ot: 0,   otCost:   0 },
-  { ...STAFF[4], scheduled: 44, actual: 50,   ot: 2,   otCost: 210 },
-  { ...STAFF[5], scheduled: 22, actual: 22,   ot: 0,   otCost:   0 },
-];
-
-const OT_RECS = [
-  { icon:"🔄", title:"สลับกะ ธีร์ ↔ สมศักดิ์ วันศุกร์เย็น",      impact:"ลด OT ธีร์ 2 ชม. = ประหยัด ฿210",                            urgency:"high"   },
-  { icon:"📉", title:"ลดพนักงานเสิร์ฟ วันพุธ เหลือ 2 คน",          impact:"ยอดขายพุธต่ำ -14% ไม่จำเป็น 3 คน = ประหยัด ฿440/วัน",      urgency:"medium" },
-  { icon:"🧑", title:"เพิ่ม Part-time 1 คน วันศุกร์-เสาร์",         impact:"ลด OT พ่อครัว + เพิ่มคุณภาพบริการ = ประหยัดสุทธิ ฿680/สัปดาห์", urgency:"medium" },
-  { icon:"⏰", title:"เลื่อนกะ ณัฐ จาก 11:00 เป็น 12:00 วันอังคาร", impact:"ตรงกับ Peak lunch มากขึ้น = เพิ่มรายได้ ~฿1,200",           urgency:"low"    },
-  { icon:"📊", title:"ตั้ง Auto-cap OT ที่ 2 ชม./สัปดาห์/คน",        impact:"ป้องกัน OT เกิน — คาดว่าประหยัด ฿1,500/เดือน",             urgency:"low"    },
-];
-
-function OvertimeAlertsTab() {
-  const totalOtCost = WEEKLY_HOURS.reduce((s, w) => s + w.otCost, 0);
-  const riskStaff   = WEEKLY_HOURS.filter(w => (w.actual / w.maxHr) >= 0.90);
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mr-2"/>กำลังโหลด...</div>;
 
   return (
-    <div className="space-y-4">
-      {/* Alert cards */}
-      <div className="flex gap-4 flex-wrap">
-        <POSStatCard icon="⚠️" label="ค่าล่วงเวลาสัปดาห์นี้"   value={`฿${totalOtCost.toLocaleString()}`}          sub={`${WEEKLY_HOURS.filter(w=>w.ot>0).length} คน ทำ OT`}                color="danger"  />
-        <POSStatCard icon="🚨" label="เสี่ยง OT สัปดาห์หน้า"     value={`${riskStaff.length} คน`}                      sub="ใกล้ถึงเพดานชั่วโมง"                                               color="warning" />
-        <POSStatCard icon="💡" label="AI ประหยัดได้"              value={`฿${Math.round(totalOtCost * 0.7).toLocaleString()}`} sub="ถ้าใช้ตาราง AI แทนจัดเอง"                               color="success" />
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-[13px] text-muted-foreground">{staff.length} พนักงาน · {shifts.filter(s => !s.clock_out).length} กำลังทำงาน</div>
+        <button onClick={openAdd} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[12px] font-bold bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.3)] hover:opacity-90 transition-opacity">
+          <Plus size={14} /> เพิ่มพนักงาน
+        </button>
       </div>
 
-      {/* Staff hours */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="text-[14px] font-bold text-foreground mb-4">📊 ชั่วโมงทำงาน — สัปดาห์นี้</div>
-        <div className="divide-y divide-border/40">
-          {WEEKLY_HOURS.map((w, i) => {
-            const pct    = (w.actual / w.maxHr) * 100;
-            const isOver = w.actual > w.maxHr;
-            const isRisk = pct >= 90 && !isOver;
-            return (
-              <div key={i} className="flex items-center gap-3 py-3.5">
-                <span className="text-[22px] shrink-0">{w.avatar}</span>
-                <div className="w-[82px] shrink-0">
-                  <div className="text-[13px] font-bold text-foreground">{w.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{w.role}</div>
-                </div>
-
-                {/* Progress */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between text-[10px] mb-1.5">
-                    <span className="text-muted-foreground">กำหนด {w.scheduled} ชม.</span>
-                    <span className={cn("font-bold tabular-nums", isOver ? "text-danger" : isRisk ? "text-warning" : "text-success")}>
-                      {w.actual} / {w.maxHr} ชม.
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-border overflow-hidden relative">
-                    <div className={cn("h-full rounded-full transition-all", isOver ? "bg-danger" : isRisk ? "bg-warning" : "bg-success")}
-                      style={{ width: `${Math.min(pct, 100)}%` }} />
-                    <div className="absolute top-0 bottom-0 w-0.5 bg-accent/60"
-                      style={{ left: `${(w.scheduled / w.maxHr) * 100}%` }} />
-                  </div>
-                </div>
-
-                {/* OT */}
-                <div className="w-[72px] text-right shrink-0">
-                  {w.ot > 0 ? (
-                    <>
-                      <div className="font-mono text-[13px] font-extrabold text-danger tabular-nums">+{w.ot} ชม.</div>
-                      <div className="text-[10px] text-danger">OT ฿{w.otCost}</div>
-                    </>
-                  ) : <POSBadge color="success">✅ ปกติ</POSBadge>}
-                </div>
-
-                {/* AI tip */}
-                <div className="w-[150px] shrink-0 hidden xl:block">
-                  {isOver && (
-                    <div className="text-[10px] px-2 py-1.5 rounded-lg bg-danger/8 border border-danger/20 text-danger font-semibold">
-                      🤖 ควรสลับกะกับ{STAFF.find(s => s.id !== w.id && s.role === w.role)?.name ?? "พาร์ทไทม์"}
-                    </div>
-                  )}
-                  {isRisk && (
-                    <div className="text-[10px] px-2 py-1.5 rounded-lg bg-warning/8 border border-warning/20 text-warning font-semibold">
-                      ⚠️ เหลือ {(w.maxHr - w.actual).toFixed(1)} ชม. ระวัง OT
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* AI recommendations */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="text-[14px] font-bold text-foreground mb-4 flex items-center gap-2">
-          🤖 <span className="text-gradient-primary">AI แนะนำลดต้นทุนแรงงาน</span>
-        </div>
-        <div className="space-y-2">
-          {OT_RECS.map((rec, i) => (
-            <div key={i} className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-xl border",
-              rec.urgency === "high"   ? "bg-danger/5   border-danger/20"   :
-              rec.urgency === "medium" ? "bg-warning/5  border-warning/20"  :
-                                         "bg-primary/5  border-primary/20"
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+        {staff.map(s => {
+          const activeShift = getActiveShift(s.id);
+          const isWorking = !!activeShift;
+          const roleName = s.roles?.name || '';
+          const roleLabel = s.roles?.label || roleName;
+          return (
+            <div key={s.id} className={cn(
+              "bg-[hsl(var(--surface))] border rounded-2xl p-4 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
+              isWorking ? "border-[hsl(var(--success)/0.4)]" : "border-border",
+              !s.is_active && "opacity-50"
             )}>
-              <span className="text-[20px]">{rec.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-foreground">{rec.title}</div>
-                <div className="text-[11px] text-muted-foreground">{rec.impact}</div>
-              </div>
-              <POSBadge color={rec.urgency === "high" ? "danger" : rec.urgency === "medium" ? "warning" : "primary"}>
-                {rec.urgency === "high" ? "ด่วน" : rec.urgency === "medium" ? "แนะนำ" : "ไว้พิจารณา"}
-              </POSBadge>
-              <button className="px-3 py-1.5 rounded-lg gradient-primary text-white text-[11px] font-bold shadow-primary hover:shadow-primary-lg transition-shadow shrink-0">
-                ใช้เลย
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 flex items-center gap-4 p-4 rounded-xl bg-success/5 border border-success/20">
-          <span className="text-[30px]">💰</span>
-          <div className="flex-1">
-            <div className="text-[13px] font-bold text-success">ถ้าทำตาม AI ทั้งหมด</div>
-            <div className="text-[12px] text-muted-foreground">ประหยัดค่าแรงได้ ~฿3,030/สัปดาห์ หรือ ~฿12,120/เดือน โดยไม่กระทบคุณภาพ</div>
-          </div>
-          <div className="text-right shrink-0">
-            <div className="font-mono text-[26px] font-extrabold text-success tabular-nums">-฿12.1k</div>
-            <div className="text-[10px] text-muted-foreground">/เดือน</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════
-// TAB 3 — Staff Performance
-// ════════════════════════════════════════════════
-const PERF = [
-  { ...STAFF[0], ordersHandled: 142, avgTime: "8.2 นาที", rating: 4.7, efficiency: 92, tip: "🏆 เร็วที่สุดในทีม" },
-  { ...STAFF[1], ordersHandled: 198, avgTime: "1.5 นาที", rating: 4.9, efficiency: 96, tip: "💯 ไม่เคยคิดเงินผิด" },
-  { ...STAFF[2], ordersHandled: 167, avgTime: "2.1 นาที", rating: 4.5, efficiency: 85, tip: "📈 พัฒนาขึ้น 12% จากเดือนก่อน" },
-  { ...STAFF[3], ordersHandled: 145, avgTime: "2.4 นาที", rating: 4.3, efficiency: 78, tip: "💡 แนะนำอบรมเพิ่ม: Upselling" },
-  { ...STAFF[4], ordersHandled: 138, avgTime: "9.1 นาที", rating: 4.6, efficiency: 88, tip: "⭐ เก่งของหวาน — ควรทำ dessert กะเย็น" },
-  { ...STAFF[5], ordersHandled:  68, avgTime: "2.8 นาที", rating: 4.1, efficiency: 72, tip: "🆕 ยังใหม่ — จับคู่กับ ณัฐ เพื่อเรียนรู้" },
-];
-
-function StaffPerformanceTab() {
-  const sorted = [...PERF].sort((a, b) => b.efficiency - a.efficiency);
-
-  return (
-    <div className="space-y-4">
-      {/* Summary */}
-      <div className="flex gap-3 flex-wrap">
-        <POSStatCard icon="🏅" label="MVP สัปดาห์นี้"   value="อรทัย"   sub="ประสิทธิภาพ 96%"             color="warning" />
-        <POSStatCard icon="📊" label="ออเดอร์ทั้งหมด"  value="858"     sub="รายการ รวมทุกคน"               color="primary" />
-        <POSStatCard icon="⭐" label="Rating เฉลี่ย"    value="4.5/5"   sub="ทีมทั้งหมด"                   color="accent"  />
-        <POSStatCard icon="🤖" label="AI แนะนำอบรม"    value="2 คน"    sub="พลอย + มิน"                    color="danger"  />
-      </div>
-
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="flex justify-between items-center mb-5">
-          <div className="text-[14px] font-bold text-foreground">🏅 ผลงานพนักงาน — สัปดาห์นี้</div>
-          <POSBadge color="accent" glow>🤖 AI วิเคราะห์</POSBadge>
-        </div>
-
-        <div className="divide-y divide-border/40">
-          {sorted.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 py-4">
-              {/* Rank */}
-              <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center font-mono text-[14px] font-extrabold shrink-0",
-                i === 0 ? "gradient-primary text-white shadow-primary" :
-                i === 1 ? "bg-muted/30 text-foreground border border-border" :
-                i === 2 ? "bg-warning/15 text-warning border border-warning/20" :
-                          "border border-border text-muted-foreground"
-              )}>{i + 1}</div>
-
-              <span className="text-[22px] shrink-0">{p.avatar}</span>
-
-              <div className="w-[88px] shrink-0">
-                <div className="text-[13px] font-bold text-foreground">{p.name}</div>
-                <POSBadge color={roleColor(p.role)}>{p.role.replace(" (Part-time)","")}</POSBadge>
-              </div>
-
-              {/* Stats */}
-              <div className="flex gap-4 flex-1">
-                {[
-                  { label:"ออเดอร์",   value: `${p.ordersHandled}`, unit:"รายการ" },
-                  { label:"เวลาเฉลี่ย", value: p.avgTime,           unit:""       },
-                  { label:"Rating",    value: `${p.rating}/5`,      unit:"⭐"     },
-                ].map((s, si) => (
-                  <div key={si} className="text-center">
-                    <div className="text-[10px] text-muted-foreground">{s.label}</div>
-                    <div className="font-mono text-[14px] font-extrabold text-foreground tabular-nums">{s.value}</div>
-                    <div className="text-[9px] text-muted-foreground">{s.unit}</div>
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-[32px]">{s.avatar_emoji || '👤'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-bold text-foreground truncate">{s.nickname || s.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{s.name}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border", getRoleColor(roleName))}>
+                      {roleLabel}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">฿{Number(s.hourly_rate || 0)}/hr</span>
                   </div>
+                </div>
+                <div className={cn("w-3 h-3 rounded-full shrink-0 mt-1", isWorking ? "bg-[hsl(var(--success))] shadow-[0_0_8px_hsl(var(--success)/0.5)]" : "bg-muted")} />
+              </div>
+
+              {/* PIN */}
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <span className="text-[10px] text-muted-foreground">PIN:</span>
+                <button onClick={() => {
+                  const next = new Set(revealPins);
+                  next.has(s.id) ? next.delete(s.id) : next.add(s.id);
+                  setRevealPins(next);
+                }} className="text-[12px] font-mono tracking-widest text-foreground hover:text-primary transition-colors">
+                  {revealPins.has(s.id) ? (s.pin || '—') : '●●●●'}
+                </button>
+              </div>
+
+              {/* Status */}
+              <div className={cn("text-[11px] font-semibold px-3 py-2 rounded-xl mb-3 text-center",
+                isWorking ? "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.2)]"
+                          : "bg-muted text-muted-foreground border border-border"
+              )}>
+                {isWorking ? `🟢 กำลังทำงาน — เข้า ${new Date(activeShift.clock_in).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : '⚪ ไม่ได้ลงเวลา'}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button onClick={() => openEdit(s)}
+                  className="flex-1 h-10 rounded-xl border border-border bg-muted text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                  ✏️ แก้ไข
+                </button>
+                {isWorking ? (
+                  <button onClick={() => clockOut(s.id)}
+                    className="flex-1 h-10 rounded-xl bg-[hsl(var(--danger)/0.1)] text-[hsl(var(--danger))] border border-[hsl(var(--danger)/0.2)] text-[11px] font-bold hover:bg-[hsl(var(--danger)/0.15)] transition-colors">
+                    🕐 ลงเวลาออก
+                  </button>
+                ) : (
+                  <button onClick={() => clockIn(s.id)}
+                    className="flex-1 h-10 rounded-xl bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.2)] text-[11px] font-bold hover:bg-[hsl(var(--success)/0.15)] transition-colors">
+                    🕐 ลงเวลาเข้า
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add/Edit modal */}
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent className="max-w-md p-0 gap-0 rounded-2xl border-border bg-[hsl(var(--surface))]" aria-describedby={undefined}>
+          <div className="px-5 py-4 border-b border-border">
+            <DialogTitle className="text-[15px] font-bold text-foreground">{editStaff ? '✏️ แก้ไขพนักงาน' : '➕ เพิ่มพนักงาน'}</DialogTitle>
+          </div>
+          <div className="p-5 space-y-3">
+            {/* Avatar emoji picker */}
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Avatar</label>
+              <div className="flex gap-2 flex-wrap">
+                {AVATARS.map(a => (
+                  <button key={a} onClick={() => setFormEmoji(a)}
+                    className={cn("w-10 h-10 rounded-xl text-[22px] flex items-center justify-center border-2 transition-all",
+                      formEmoji === a ? "border-primary bg-primary/10" : "border-border bg-muted hover:border-primary/30")}>
+                    {a}
+                  </button>
                 ))}
               </div>
-
-              {/* Efficiency bar */}
-              <div className="w-[110px] shrink-0">
-                <div className="flex justify-between text-[10px] mb-1.5">
-                  <span className="text-muted-foreground">ประสิทธิภาพ</span>
-                  <span className={cn("font-mono font-bold tabular-nums",
-                    p.efficiency > 90 ? "text-success" : p.efficiency > 75 ? "text-warning" : "text-danger")}>
-                    {p.efficiency}%
-                  </span>
-                </div>
-                <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                  <div className={cn("h-full rounded-full transition-all",
-                    p.efficiency > 90 ? "bg-success" : p.efficiency > 75 ? "bg-warning" : "bg-danger")}
-                    style={{ width: `${p.efficiency}%` }} />
-                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">ชื่อเต็ม</label>
+                <input value={formName} onChange={e => setFormName(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
               </div>
-
-              {/* AI tip */}
-              <div className="w-[190px] shrink-0 hidden lg:block text-[11px] text-muted-foreground px-3 py-2 rounded-lg bg-surface-alt border border-border">
-                {p.tip}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">ชื่อเล่น</label>
+                <input value={formNickname} onChange={e => setFormNickname(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
               </div>
             </div>
-          ))}
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">ตำแหน่ง</label>
+              <select value={formRoleId} onChange={e => setFormRoleId(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
+                {roles.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">PIN</label>
+                <input value={formPin} onChange={e => setFormPin(e.target.value)} maxLength={6}
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground font-mono text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">เบอร์โทร</label>
+                <input value={formPhone} onChange={e => setFormPhone(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">฿/ชม.</label>
+                <input type="number" value={formRate} onChange={e => setFormRate(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+            </div>
+          </div>
+          <div className="px-5 py-4 border-t border-border flex gap-2">
+            <button onClick={() => setShowAdd(false)}
+              className="flex-1 h-11 rounded-xl border border-border bg-muted text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              ยกเลิก
+            </button>
+            <button onClick={saveStaff} disabled={!formName || !formRoleId}
+              className="flex-1 h-11 rounded-xl bg-primary text-white text-[12px] font-bold shadow-[0_2px_8px_hsl(var(--primary)/0.3)] hover:opacity-90 transition-opacity disabled:opacity-40">
+              💾 บันทึก
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════
+// TAB 2: Weekly Schedule
+// ═══════════════════════════════════════════
+function ScheduleTab() {
+  const { toast } = useToast();
+  const [staff, setStaff] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editCell, setEditCell] = useState<{ staffId: string; staffName: string; dayOfWeek: number } | null>(null);
+  const [shiftStart, setShiftStart] = useState("09:00");
+  const [shiftEnd, setShiftEnd] = useState("17:00");
+  const [isDayOff, setIsDayOff] = useState(false);
+
+  const todayDow = new Date().getDay(); // 0=Sun
+
+  useEffect(() => { fetchData(); }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    const [staffRes, schedRes] = await Promise.all([
+      supabase.from('staff').select('id, name, nickname, roles(name, label)').eq('is_active', true).order('name'),
+      supabase.from('staff_schedules').select('*'),
+    ]);
+    setStaff(staffRes.data || []);
+    setSchedules(schedRes.data || []);
+    setLoading(false);
+  }
+
+  function getSchedule(staffId: string, dow: number) {
+    return schedules.find(s => s.staff_id === staffId && s.day_of_week === dow);
+  }
+
+  async function saveSchedule() {
+    if (!editCell) return;
+    const existing = getSchedule(editCell.staffId, editCell.dayOfWeek);
+    const payload = {
+      staff_id: editCell.staffId,
+      day_of_week: editCell.dayOfWeek,
+      shift_start: shiftStart,
+      shift_end: shiftEnd,
+      is_day_off: isDayOff,
+    };
+
+    if (existing) {
+      await supabase.from('staff_schedules').update(payload).eq('id', existing.id);
+    } else {
+      await supabase.from('staff_schedules').insert(payload);
+    }
+    toast({ title: "✅ บันทึกตารางงานแล้ว" });
+    setEditCell(null);
+    fetchData();
+  }
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mr-2"/>กำลังโหลด...</div>;
+
+  return (
+    <>
+      <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] overflow-x-auto">
+        <table className="w-full text-[12px] min-w-[700px]">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="px-4 py-3 text-left font-semibold text-muted-foreground w-[140px]">พนักงาน</th>
+              {DAYS.map((d, i) => (
+                <th key={i} className={cn("px-2 py-3 text-center font-semibold",
+                  i === todayDow ? "text-primary bg-primary/5" : "text-muted-foreground"
+                )}>
+                  {DAYS_SHORT[i]}
+                  {i === todayDow && <div className="text-[8px] text-primary mt-0.5">วันนี้</div>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {staff.map(s => (
+              <tr key={s.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/30 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="text-[12px] font-bold text-foreground truncate">{s.nickname || s.name}</div>
+                  <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded inline-block mt-0.5", getRoleColor(s.roles?.name || ''))}>
+                    {s.roles?.label || ''}
+                  </div>
+                </td>
+                {DAYS.map((_, dow) => {
+                  const sched = getSchedule(s.id, dow);
+                  return (
+                    <td key={dow} className={cn("px-1 py-2 text-center", dow === todayDow && "bg-primary/5")}>
+                      <button onClick={() => {
+                        setEditCell({ staffId: s.id, staffName: s.nickname || s.name, dayOfWeek: dow });
+                        if (sched) {
+                          setShiftStart(sched.shift_start?.slice(0, 5) || "09:00");
+                          setShiftEnd(sched.shift_end?.slice(0, 5) || "17:00");
+                          setIsDayOff(sched.is_day_off);
+                        } else {
+                          setShiftStart("09:00"); setShiftEnd("17:00"); setIsDayOff(false);
+                        }
+                      }} className={cn(
+                        "w-full py-2 px-1 rounded-lg text-[10px] font-semibold transition-colors",
+                        sched?.is_day_off ? "bg-muted text-muted-foreground" :
+                        sched ? "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15" :
+                        "text-muted-foreground/40 hover:bg-muted hover:text-muted-foreground"
+                      )}>
+                        {sched?.is_day_off ? "หยุด" : sched ? `${sched.shift_start?.slice(0,5)}-${sched.shift_end?.slice(0,5)}` : "—"}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Edit schedule modal */}
+      <Dialog open={!!editCell} onOpenChange={open => { if (!open) setEditCell(null); }}>
+        <DialogContent className="max-w-sm p-0 gap-0 rounded-2xl border-border bg-[hsl(var(--surface))]" aria-describedby={undefined}>
+          <div className="px-5 py-4 border-b border-border">
+            <DialogTitle className="text-[15px] font-bold text-foreground">📅 ตั้งค่ากะ</DialogTitle>
+            <p className="text-[12px] text-muted-foreground mt-0.5">{editCell?.staffName} — {editCell ? DAYS[editCell.dayOfWeek] : ''}</p>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <label className="text-[12px] font-semibold text-foreground">วันหยุด</label>
+              <button onClick={() => setIsDayOff(!isDayOff)}
+                className={cn("w-12 h-7 rounded-full transition-colors relative",
+                  isDayOff ? "bg-[hsl(var(--danger))]" : "bg-muted border border-border"
+                )}>
+                <div className={cn("w-5 h-5 rounded-full bg-white shadow absolute top-1 transition-all",
+                  isDayOff ? "left-6" : "left-1"
+                )} />
+              </button>
+            </div>
+            {!isDayOff && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">เข้า</label>
+                  <input type="time" value={shiftStart} onChange={e => setShiftStart(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">ออก</label>
+                  <input type="time" value={shiftEnd} onChange={e => setShiftEnd(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-[13px] text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="px-5 py-4 border-t border-border flex gap-2">
+            <button onClick={() => setEditCell(null)} className="flex-1 h-11 rounded-xl border border-border bg-muted text-[12px] font-semibold text-muted-foreground">ยกเลิก</button>
+            <button onClick={saveSchedule} className="flex-1 h-11 rounded-xl bg-primary text-white text-[12px] font-bold shadow-[0_2px_8px_hsl(var(--primary)/0.3)] hover:opacity-90">💾 บันทึก</button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════
+// TAB 3: Work Hours Stats
+// ═══════════════════════════════════════════
+function WorkStatsTab() {
+  const { toast } = useToast();
+  const [staff, setStaff] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay() + 1); // Monday
+    return d.toISOString().slice(0, 10);
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay() + 7); // Sunday
+    return d.toISOString().slice(0, 10);
+  });
+
+  useEffect(() => { fetchData(); }, [dateFrom, dateTo]);
+
+  async function fetchData() {
+    setLoading(true);
+    const [staffRes, sessRes] = await Promise.all([
+      supabase.from('staff').select('id, name, nickname, hourly_rate, roles(label)').eq('is_active', true),
+      supabase.from('staff_sessions').select('*').gte('clock_in', `${dateFrom}T00:00:00`).lte('clock_in', `${dateTo}T23:59:59`),
+    ]);
+    setStaff(staffRes.data || []);
+    setSessions(sessRes.data || []);
+    setLoading(false);
+  }
+
+  const stats = useMemo(() => {
+    return staff.map(s => {
+      const mySessions = sessions.filter(se => se.staff_id === s.id && se.clock_out);
+      const totalHours = mySessions.reduce((sum, se) => sum + Number(se.total_hours || 0), 0);
+      const totalBreak = mySessions.reduce((sum, se) => sum + (se.break_minutes || 0), 0);
+      const netHours = totalHours - totalBreak / 60;
+      const cost = Math.round(netHours * Number(s.hourly_rate || 0));
+      const daysWorked = new Set(mySessions.map(se => new Date(se.clock_in).toISOString().slice(0, 10))).size;
+      return { ...s, totalHours: Math.round(totalHours * 10) / 10, totalBreak, netHours: Math.round(netHours * 10) / 10, cost, daysWorked, avgHoursPerDay: daysWorked > 0 ? Math.round(totalHours / daysWorked * 10) / 10 : 0 };
+    });
+  }, [staff, sessions]);
+
+  const totalAllHours = stats.reduce((s, st) => s + st.totalHours, 0);
+  const totalCost = stats.reduce((s, st) => s + st.cost, 0);
+  const avgPerDay = stats.length > 0 ? (totalAllHours / Math.max(1, stats.length)).toFixed(1) : "0";
+
+  function exportCSV() {
+    const header = "staff_name,date,clock_in,clock_out,hours,break_min,cost\n";
+    const rows = sessions.filter(se => se.clock_out).map(se => {
+      const s = staff.find(st => st.id === se.staff_id);
+      const h = Number(se.total_hours || 0);
+      return `${s?.name || '-'},${new Date(se.clock_in).toISOString().slice(0,10)},${se.clock_in},${se.clock_out},${h.toFixed(1)},${se.break_minutes || 0},${Math.round(h * Number(s?.hourly_rate || 0))}`;
+    }).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `phimm-staff-hours-${dateFrom}.csv`;
+    a.click();
+    toast({ title: "📥 Export สำเร็จ" });
+  }
+
+  // Daily chart data
+  const chartData = useMemo(() => {
+    const dateMap: Record<string, Record<string, number>> = {};
+    sessions.filter(se => se.clock_out).forEach(se => {
+      const date = new Date(se.clock_in).toISOString().slice(0, 10);
+      const s = staff.find(st => st.id === se.staff_id);
+      const name = s?.nickname || s?.name || 'Unknown';
+      if (!dateMap[date]) dateMap[date] = {};
+      dateMap[date][name] = (dateMap[date][name] || 0) + Number(se.total_hours || 0);
+    });
+    return Object.entries(dateMap).sort().map(([date, staffHours]) => ({
+      date: date.slice(5), // MM-DD
+      ...staffHours,
+    }));
+  }, [sessions, staff]);
+
+  const staffNames = [...new Set(sessions.map(se => {
+    const s = staff.find(st => st.id === se.staff_id);
+    return s?.nickname || s?.name || 'Unknown';
+  }))];
+
+  const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--accent))", "hsl(var(--danger))", "#8884d8"];
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mr-2"/>กำลังโหลด...</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Date range + export */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="h-10 px-3 rounded-xl border border-border bg-[hsl(var(--surface))] text-[12px] font-semibold text-foreground" />
+        <span className="text-muted-foreground">→</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="h-10 px-3 rounded-xl border border-border bg-[hsl(var(--surface))] text-[12px] font-semibold text-foreground" />
+        <button onClick={exportCSV}
+          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-bold bg-muted text-muted-foreground border border-border hover:text-foreground transition-colors ml-auto">
+          <Download size={12} /> Export CSV
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-[160px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 text-center">
+          <Clock size={18} className="mx-auto text-primary mb-1" />
+          <div className="text-[10px] text-muted-foreground mb-1">ชม. ทำงานรวม</div>
+          <div className="font-mono text-[24px] font-black tabular-nums text-foreground">{totalAllHours.toFixed(1)}</div>
         </div>
+        <div className="flex-1 min-w-[160px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 text-center">
+          <DollarSign size={18} className="mx-auto text-[hsl(var(--warning))] mb-1" />
+          <div className="text-[10px] text-muted-foreground mb-1">ค่าแรงรวม</div>
+          <div className="font-mono text-[24px] font-black tabular-nums text-[hsl(var(--warning))]">฿{totalCost.toLocaleString()}</div>
+        </div>
+        <div className="flex-1 min-w-[160px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 text-center">
+          <Users size={18} className="mx-auto text-[hsl(var(--accent))] mb-1" />
+          <div className="text-[10px] text-muted-foreground mb-1">เฉลี่ย/คน/วัน</div>
+          <div className="font-mono text-[24px] font-black tabular-nums text-[hsl(var(--accent))]">{avgPerDay} ชม.</div>
+        </div>
+      </div>
+
+      {/* Stacked bar chart */}
+      {chartData.length > 0 && (
+        <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl p-5">
+          <div className="text-[14px] font-bold text-foreground mb-3">📊 ชั่วโมงรายวัน</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={chartData}>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip contentStyle={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              {staffNames.map((name, i) => (
+                <Bar key={name} dataKey={name} stackId="a" fill={CHART_COLORS[i % CHART_COLORS.length]} radius={i === staffNames.length - 1 ? [4, 4, 0, 0] : undefined} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Staff table */}
+      <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl overflow-x-auto">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="border-b border-border text-muted-foreground text-left">
+              <th className="px-4 py-3 font-semibold">พนักงาน</th>
+              <th className="px-3 py-3 font-semibold">ตำแหน่ง</th>
+              <th className="px-3 py-3 font-semibold text-right">วันทำงาน</th>
+              <th className="px-3 py-3 font-semibold text-right">ชม. รวม</th>
+              <th className="px-3 py-3 font-semibold text-right">พัก (นาที)</th>
+              <th className="px-3 py-3 font-semibold text-right">ชม. สุทธิ</th>
+              <th className="px-3 py-3 font-semibold text-right">ค่าแรง</th>
+              <th className="px-4 py-3 font-semibold text-right">เฉลี่ย/วัน</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map(s => (
+              <tr key={s.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/30 transition-colors">
+                <td className="px-4 py-3 font-bold text-foreground">{s.nickname || s.name}</td>
+                <td className="px-3 py-3 text-muted-foreground">{s.roles?.label || ''}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums">{s.daysWorked}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums font-bold">{s.totalHours}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums text-muted-foreground">{s.totalBreak}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums">{s.netHours}</td>
+                <td className="px-3 py-3 text-right font-mono tabular-nums font-bold text-primary">฿{s.cost.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right font-mono tabular-nums">{s.avgHoursPerDay}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════
-// MAIN
-// ════════════════════════════════════════════════
-type StaffTab = "schedule" | "overtime" | "performance";
-
-const TABS: { key: StaffTab; label: string }[] = [
-  { key: "schedule",    label: "📅 AI จัดตาราง"  },
-  { key: "overtime",    label: "⚠️ OT & ต้นทุน"   },
-  { key: "performance", label: "🏅 ผลงานพนักงาน"  },
-];
-
+// ═══════════════════════════════════════════
+// Main StaffScreen with 3 tabs
+// ═══════════════════════════════════════════
 export function StaffScreen() {
-  const [tab, setTab] = useState<StaffTab>("schedule");
+  const [tab, setTab] = useState(0);
+  const tabs = [
+    { label: "👥 พนักงาน", key: "list" },
+    { label: "📅 ตารางงาน", key: "schedule" },
+    { label: "📊 สถิติเวลา", key: "stats" },
+  ];
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-hide bg-background">
-      {/* Sub-header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3 flex items-center justify-between shrink-0">
-        <div>
-          <div className="text-[15px] font-bold text-foreground flex items-center gap-2">
-            🧑‍💼 <span className="text-gradient-primary">AI Staff Management</span>
-            <POSBadge color="primary" glow>Staff Intelligence</POSBadge>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            จัดตารางอัตโนมัติ · ควบคุม OT · วิเคราะห์ผลงาน — ลดค่าแรง 15-25%
-          </div>
-        </div>
-
-        <div className="flex gap-1.5 bg-surface-alt rounded-xl p-1 border border-border">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={cn("px-4 py-2 rounded-lg text-[12px] font-bold transition-all",
-                tab === t.key
-                  ? "gradient-primary text-white shadow-primary"
-                  : "text-muted-foreground hover:text-foreground")}>
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {/* Header */}
+      <div className="px-5 py-3 border-b border-border bg-[hsl(var(--surface))] shrink-0">
+        <h1 className="text-[15px] font-bold text-foreground">👥 จัดการพนักงาน</h1>
+        <p className="text-[11px] text-muted-foreground">Staff Management</p>
+        <div className="flex gap-1 mt-3">
+          {tabs.map((t, i) => (
+            <button key={t.key} onClick={() => setTab(i)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-[12px] font-semibold transition-all",
+                tab === i
+                  ? "bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.3)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="p-6">
-        {tab === "schedule"    && <AIScheduleTab />}
-        {tab === "overtime"    && <OvertimeAlertsTab />}
-        {tab === "performance" && <StaffPerformanceTab />}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-5">
+        {tab === 0 && <StaffListTab />}
+        {tab === 1 && <ScheduleTab />}
+        {tab === 2 && <WorkStatsTab />}
       </div>
     </div>
   );

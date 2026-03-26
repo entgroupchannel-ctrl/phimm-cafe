@@ -96,6 +96,48 @@ export type Database = {
           },
         ]
       }
+      customer_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          order_id: string | null
+          rating: number
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          order_id?: string | null
+          rating: number
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          order_id?: string | null
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_feedback_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_feedback_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_visits: {
         Row: {
           amount_spent: number | null
@@ -191,45 +233,75 @@ export type Database = {
       }
       daily_summaries: {
         Row: {
+          avg_order_value: number | null
           card_amount: number | null
           cash_amount: number | null
+          channel_breakdown: Json | null
           created_at: string | null
           date: string
           delivery_amount: number | null
+          hourly_revenue: Json | null
           id: string
+          loyalty_points_earned: number | null
           net_profit: number | null
+          new_customers: number | null
+          payment_breakdown: Json | null
           promptpay_amount: number | null
+          top_items: Json | null
+          total_discount: number | null
           total_expense: number | null
+          total_guests: number | null
           total_income: number | null
           total_orders: number | null
+          total_service_charge: number | null
           vat_collected: number | null
         }
         Insert: {
+          avg_order_value?: number | null
           card_amount?: number | null
           cash_amount?: number | null
+          channel_breakdown?: Json | null
           created_at?: string | null
           date: string
           delivery_amount?: number | null
+          hourly_revenue?: Json | null
           id?: string
+          loyalty_points_earned?: number | null
           net_profit?: number | null
+          new_customers?: number | null
+          payment_breakdown?: Json | null
           promptpay_amount?: number | null
+          top_items?: Json | null
+          total_discount?: number | null
           total_expense?: number | null
+          total_guests?: number | null
           total_income?: number | null
           total_orders?: number | null
+          total_service_charge?: number | null
           vat_collected?: number | null
         }
         Update: {
+          avg_order_value?: number | null
           card_amount?: number | null
           cash_amount?: number | null
+          channel_breakdown?: Json | null
           created_at?: string | null
           date?: string
           delivery_amount?: number | null
+          hourly_revenue?: Json | null
           id?: string
+          loyalty_points_earned?: number | null
           net_profit?: number | null
+          new_customers?: number | null
+          payment_breakdown?: Json | null
           promptpay_amount?: number | null
+          top_items?: Json | null
+          total_discount?: number | null
           total_expense?: number | null
+          total_guests?: number | null
           total_income?: number | null
           total_orders?: number | null
+          total_service_charge?: number | null
           vat_collected?: number | null
         }
         Relationships: []
@@ -914,6 +986,7 @@ export type Database = {
       staff: {
         Row: {
           auth_uid: string | null
+          avatar_emoji: string | null
           avatar_url: string | null
           created_at: string | null
           email: string | null
@@ -929,6 +1002,7 @@ export type Database = {
         }
         Insert: {
           auth_uid?: string | null
+          avatar_emoji?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
@@ -944,6 +1018,7 @@ export type Database = {
         }
         Update: {
           auth_uid?: string | null
+          avatar_emoji?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
@@ -967,8 +1042,47 @@ export type Database = {
           },
         ]
       }
+      staff_schedules: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          id: string
+          is_day_off: boolean | null
+          shift_end: string
+          shift_start: string
+          staff_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          id?: string
+          is_day_off?: boolean | null
+          shift_end: string
+          shift_start: string
+          staff_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          id?: string
+          is_day_off?: boolean | null
+          shift_end?: string
+          shift_start?: string
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_sessions: {
         Row: {
+          break_minutes: number | null
           clock_in: string
           clock_out: string | null
           id: string
@@ -977,6 +1091,7 @@ export type Database = {
           total_hours: number | null
         }
         Insert: {
+          break_minutes?: number | null
           clock_in?: string
           clock_out?: string | null
           id?: string
@@ -985,6 +1100,7 @@ export type Database = {
           total_hours?: number | null
         }
         Update: {
+          break_minutes?: number | null
           clock_in?: string
           clock_out?: string | null
           id?: string
@@ -1202,6 +1318,7 @@ export type Database = {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
       }
+      generate_daily_summary: { Args: { p_date: string }; Returns: undefined }
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
       receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
       update_customer_tier: {
