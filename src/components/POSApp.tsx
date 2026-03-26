@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
 import { OrderScreen, CartItem } from "./pos/OrderScreen";
 import { PaymentScreen } from "./pos/PaymentScreen";
@@ -16,48 +16,53 @@ import { OmnichannelScreen } from "./pos/OmnichannelScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { menuItems } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
+import {
+  ShoppingCart, CreditCard, Monitor, QrCode,
+  ChefHat, BookOpen, Package,
+  Users, UserCog, Globe, LayoutDashboard,
+  Bot, Salad, Settings,
+  Sun, Moon,
+} from "lucide-react";
 
 type Screen = "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
 
-// ── Grouped nav structure ──────────────────────────────────
 const NAV_GROUPS = [
   {
     label: "การขาย",
     items: [
-      { key: "order"    as Screen, icon: "🛒", label: "ออเดอร์"   },
-      { key: "payment"  as Screen, icon: "💳", label: "ชำระเงิน"  },
-      { key: "kiosk"    as Screen, icon: "🖥️", label: "Kiosk"     },
-      { key: "qr"       as Screen, icon: "📲", label: "QR โต๊ะ"   },
+      { key: "order"     as Screen, icon: ShoppingCart, label: "ออเดอร์"  },
+      { key: "payment"   as Screen, icon: CreditCard,   label: "ชำระเงิน" },
+      { key: "kiosk"     as Screen, icon: Monitor,      label: "Kiosk"    },
+      { key: "qr"        as Screen, icon: QrCode,       label: "QR โต๊ะ"  },
     ],
   },
   {
     label: "ร้านครัว",
     items: [
-      { key: "kds"      as Screen, icon: "👨‍🍳", label: "จอครัว"   },
-      { key: "menu"     as Screen, icon: "📋", label: "เมนู"       },
-      { key: "stock"    as Screen, icon: "📦", label: "สต๊อก"      },
+      { key: "kds"       as Screen, icon: ChefHat,      label: "จอครัว"  },
+      { key: "menu"      as Screen, icon: BookOpen,      label: "เมนู"    },
+      { key: "stock"     as Screen, icon: Package,       label: "สต๊อก"   },
     ],
   },
   {
     label: "บริหาร",
     items: [
-      { key: "crm"      as Screen, icon: "👥", label: "ลูกค้า"    },
-      { key: "staff"    as Screen, icon: "🧑‍💼", label: "พนักงาน" },
-      { key: "omni"     as Screen, icon: "🌐", label: "Omni"       },
-      { key: "dashboard"as Screen, icon: "📊", label: "Dashboard"  },
+      { key: "crm"       as Screen, icon: Users,         label: "ลูกค้า"  },
+      { key: "staff"     as Screen, icon: UserCog,       label: "พนักงาน" },
+      { key: "omni"      as Screen, icon: Globe,         label: "Omni"    },
+      { key: "dashboard" as Screen, icon: LayoutDashboard,label: "Dashboard"},
     ],
   },
   {
     label: "เครื่องมือ",
     items: [
-      { key: "ai"       as Screen, icon: "🤖", label: "AI"         },
-      { key: "nutrition"as Screen, icon: "🥗", label: "โภชนา"      },
-      { key: "settings" as Screen, icon: "⚙️", label: "ตั้งค่า"    },
+      { key: "ai"        as Screen, icon: Bot,           label: "AI"      },
+      { key: "nutrition" as Screen, icon: Salad,         label: "โภชนา"   },
+      { key: "settings"  as Screen, icon: Settings,      label: "ตั้งค่า" },
     ],
   },
 ];
 
-// All items flat list (for lookups)
 const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
 // ── Live Clock ─────────────────────────────────────────────
@@ -73,82 +78,10 @@ function Clock() {
     }, 10000);
     return () => clearInterval(iv);
   }, []);
-  return <span className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: "hsl(var(--header-muted))" }}>{time}</span>;
-}
-
-// ── Compact grouped nav ────────────────────────────────────
-function NavBar({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const activeGroup = NAV_GROUPS.find(g => g.items.some(i => i.key === screen));
-  const activeItem = ALL_NAV.find(i => i.key === screen);
-
   return (
-    <nav ref={ref} className="flex items-center gap-1 mx-3">
-      {NAV_GROUPS.map(group => {
-        const isGroupActive = group.items.some(i => i.key === screen);
-        const isOpen = open === group.label;
-        return (
-          <div key={group.label} className="relative">
-            {/* Group pill button */}
-            <button
-              onClick={() => setOpen(isOpen ? null : group.label)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-150 select-none",
-                isGroupActive
-                  ? "bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.35)]"
-                  : "text-foreground/60 hover:bg-border/60 hover:text-foreground"
-              )}>
-              {isGroupActive && activeGroup?.label === group.label && (
-                <span className="text-[13px] leading-none">{activeItem?.icon}</span>
-              )}
-              <span>{group.label}</span>
-              <svg className={cn("w-3 h-3 opacity-60 transition-transform duration-150", isOpen && "rotate-180")}
-                viewBox="0 0 12 12" fill="none">
-                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Dropdown panel */}
-            {isOpen && (
-              <div className="absolute top-[calc(100%+6px)] left-0 z-50 glass-dark border border-border rounded-2xl shadow-[0_8px_32px_rgb(0_0_0_/_0.12)] overflow-hidden min-w-[160px] animate-scale-in">
-                {group.items.map(item => (
-                  <button
-                    key={item.key}
-                    onClick={() => { setScreen(item.key); setOpen(null); }}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium transition-all",
-                      screen === item.key
-                        ? "bg-primary text-white"
-                        : "text-foreground hover:bg-muted"
-                    )}>
-                    <span className="text-[15px] leading-none">{item.icon}</span>
-                    <span>{item.label}</span>
-                    {screen === item.key && (
-                      <span className="ml-auto">
-                        <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3">
-                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </nav>
+    <span className="font-mono text-[11px] font-semibold tabular-nums text-muted-foreground">
+      {time}
+    </span>
   );
 }
 
@@ -165,29 +98,79 @@ function DarkModeToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={dark ? "Light mode" : "Dark mode"}
       className={cn(
-        "relative w-[52px] h-[28px] rounded-full border transition-all duration-300 select-none shrink-0",
+        "flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-200 select-none",
         dark
-          ? "bg-primary border-primary/40 shadow-[0_2px_8px_hsl(var(--primary)/0.35)]"
-          : "bg-muted border-border shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]"
+          ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+          : "bg-muted border-border text-muted-foreground hover:bg-muted/70 hover:text-foreground"
       )}
     >
-      {/* Track icons */}
-      <span className={cn(
-        "absolute top-1/2 -translate-y-1/2 text-[11px] transition-opacity duration-200",
-        dark ? "left-2 opacity-100" : "left-2 opacity-0"
-      )}>🌙</span>
-      <span className={cn(
-        "absolute top-1/2 -translate-y-1/2 text-[11px] transition-opacity duration-200",
-        dark ? "right-2 opacity-0" : "right-2 opacity-100"
-      )}>☀️</span>
-      {/* Thumb */}
-      <span className={cn(
-        "absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-all duration-300",
-        dark ? "left-[26px]" : "left-[3px]"
-      )} />
+      {dark ? <Sun size={14} /> : <Moon size={14} />}
     </button>
+  );
+}
+
+// ── Sidebar Nav ────────────────────────────────────────────
+function Sidebar({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
+  return (
+    <aside className="w-[200px] shrink-0 flex flex-col bg-[hsl(var(--surface))] border-r border-border overflow-y-auto scrollbar-hide">
+
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border/60">
+        <img src={phimmLogo} alt="Phimm Cafe" className="w-8 h-8 object-contain shrink-0" />
+        <div>
+          <div className="text-[13px] font-bold tracking-tight text-foreground leading-tight">Phimm Cafe</div>
+          <div className="text-[9px] font-semibold text-muted-foreground tracking-widest uppercase">POS System</div>
+        </div>
+      </div>
+
+      {/* Nav groups */}
+      <nav className="flex-1 p-2 space-y-3">
+        {NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            {/* Group label */}
+            <div className="px-2 pb-1 text-[9px] font-bold tracking-widest uppercase text-muted-foreground/60">
+              {group.label}
+            </div>
+            {/* Items */}
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const active = screen === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setScreen(item.key)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 select-none text-left",
+                      active
+                        ? "bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.28)]"
+                        : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} className="shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border/60 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] shadow-[0_0_5px_hsl(var(--success)/0.7)] animate-pulse" />
+          <span className="text-[11px] text-muted-foreground font-medium">ออนไลน์</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock />
+          <DarkModeToggle />
+        </div>
+      </div>
+    </aside>
   );
 }
 
@@ -199,48 +182,12 @@ export function POSApp() {
     { ...menuItems[3], qty: 2 },
   ]);
 
-  const activeItem = ALL_NAV.find(i => i.key === screen);
-
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground font-sans">
-
-      {/* ── Apple-style Light Header ── */}
-      <header className="flex items-center justify-between px-5 py-2.5 glass-dark border-b border-border/60 shrink-0 z-10"
-        style={{ boxShadow: "0 1px 0 hsl(var(--border)/0.8)" }}>
-
-        {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <img src={phimmLogo} alt="Phimm Cafe" width={36} height={36}
-            className="w-9 h-9 object-contain" />
-          <div>
-            <span className="text-[15px] font-bold tracking-tight text-foreground select-none">Phimm Cafe</span>
-            <span className="block text-[9px] font-semibold text-muted-foreground tracking-widest uppercase leading-none">POS System</span>
-          </div>
-        </div>
-
-        {/* Grouped compact nav */}
-        <NavBar screen={screen} setScreen={setScreen} />
-
-        {/* Status */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Current screen breadcrumb */}
-          {activeItem && (
-            <span className="hidden lg:flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground bg-muted/70 px-2.5 py-1 rounded-full border border-border/50">
-              <span>{activeItem.icon}</span>
-              <span>{activeItem.label}</span>
-            </span>
-          )}
-          <span className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
-            <span className="w-1.5 h-1.5 rounded-full bg-success shadow-[0_0_5px_hsl(var(--success)/0.7)] animate-pulse-glow" />
-            <span className="hidden sm:inline">ออนไลน์</span>
-          </span>
-          <Clock />
-          <DarkModeToggle />
-        </div>
-      </header>
+    <div className="h-screen flex overflow-hidden bg-background text-foreground font-sans">
+      <Sidebar screen={screen} setScreen={setScreen} />
 
       {/* ── Content ── */}
-      <main className="flex flex-1 overflow-hidden bg-background">
+      <main className="flex flex-1 overflow-hidden bg-background min-w-0">
         {screen === "order"     && <OrderScreen cart={cart} setCart={setCart} onPay={() => setScreen("payment")} />}
         {screen === "payment"   && <PaymentScreen cart={cart} onSuccess={() => setScreen("order")} />}
         {screen === "kds"       && <KDSScreen />}
