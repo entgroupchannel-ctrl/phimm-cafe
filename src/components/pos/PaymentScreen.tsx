@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CartItem } from "./OrderScreen";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentScreenProps {
   cart: CartItem[];
+  orderId?: string | null;
+  tableId?: string | null;
   onSuccess?: () => void;
 }
 
@@ -13,14 +16,57 @@ const METHODS = [
   { key: "card",      label: "บัตร",     sublabel: "EDC",       icon: "💳" },
 ];
 
-export function PaymentScreen({ cart, onSuccess }: PaymentScreenProps) {
+export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScreenProps) {
   const [method, setMethod] = useState("promptpay");
   const [paid,   setPaid]   = useState(false);
+  const [orderData, setOrderData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  const total    = cart.reduce((s, c) => s + c.price * c.qty, 0) || 317;
-  const totalQty = cart.reduce((s, c) => s + c.qty, 0) || 3;
+  useEffect(() => {
+    if (orderId) fetchOrder();
+  }, [orderId]);
 
-  const handleConfirm = () => {
+  async function fetchOrder() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('orders')
+      .select('*, order_items(id, name, price, qty, status, menu_items(emoji))')
+      .eq('id', orderId!)
+      .single();
+    if (data) setOrderData(data);
+    setLoading(false);
+  }
+
+  const total = orderData ? Number(orderData.total) : cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const allItems: any[] = orderData?.order_items || cart;
+  const totalQty = allItems.reduce((s: number, i: any) => s + (i.qty || 1), 0);
+
+  const handleConfirm = async () => {
+    if (orderId) {
+      const paymentMethodMap: Record<string, string> = {
+        promptpay: 'promptpay',
+        cash: 'cash',
+        card: 'credit_card',
+      };
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'paid' as any,
+          payment_method: paymentMethodMap[method] as any,
+          paid_amount: total,
+          change_amount: 0,
+          paid_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Payment error:', error);
+        return;
+      }
+      // trigger trg_sync_table_status will auto-set table to 'available'
+    }
+
     setPaid(true);
     setTimeout(() => { onSuccess?.(); setPaid(false); }, 2200);
   };
@@ -47,22 +93,33 @@ export function PaymentScreen({ cart, onSuccess }: PaymentScreenProps) {
             {/* ── Amount card ── */}
             <div className="bg-white dark:bg-card rounded-3xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.05),0_16px_40px_rgba(0,0,0,0.06)] px-8 pt-7 pb-6 text-center">
               <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">ยอดชำระ</p>
-              <div className="font-mono text-[52px] font-black text-foreground tabular-nums leading-none mb-1">
-                ฿{total.toLocaleString()}
-                <span className="text-[24px] font-semibold text-muted-foreground">.00</span>
-              </div>
-              <p className="text-[13px] text-muted-foreground mt-2">{totalQty} รายการ · รวม VAT แล้ว</p>
+              {loading ? (
+                <div className="h-16 flex items-center justify-center">
+                  <div className="text-muted-foreground text-[13px]">กำลังโหลด...</div>
+                </div>
+              ) : (
+                <>
+                  <div className="font-mono text-[52px] font-black text-foreground tabular-nums leading-none mb-1">
+                    ฿{total.toLocaleString()}
+                    <span className="text-[24px] font-semibold text-muted-foreground">.00</span>
+                  </div>
+                  <p className="text-[13px] text-muted-foreground mt-2">{totalQty} รายการ · รวม VAT แล้ว</p>
+                </>
+              )}
 
               {/* Order items summary */}
-              {cart.length > 0 && (
+              {allItems.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-border/60 space-y-1.5 text-left">
-                  {cart.map(item => (
+                  {allItems.map((item: any) => (
                     <div key={item.id} className="flex items-center justify-between text-[12px]">
                       <span className="text-foreground font-medium flex items-center gap-1.5">
-                        <span>{item.img}</span>{item.name}
+                        <span>{item.menu_items?.emoji || item.img || '🍽'}</span>
+                        {item.name}
                         <span className="text-muted-foreground">× {item.qty}</span>
                       </span>
-                      <span className="font-mono tabular-nums text-foreground font-semibold">฿{item.price * item.qty}</span>
+                      <span className="font-mono tabular-nums text-foreground font-semibold">
+                        ฿{(Number(item.price) * item.qty).toLocaleString()}
+                      </span>
                     </div>
                   ))}
                 </div>

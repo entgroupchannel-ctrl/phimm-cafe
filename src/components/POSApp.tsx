@@ -15,7 +15,7 @@ import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { TableMapScreen } from "./pos/TableMapScreen";
-import { menuItems } from "@/data/pos-data";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   ShoppingCart, CreditCard, Monitor, QrCode,
@@ -64,8 +64,6 @@ const NAV_GROUPS = [
     ],
   },
 ];
-
-const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
 // ── Dark Mode Toggle ───────────────────────────────────────
 function DarkModeToggle() {
@@ -137,7 +135,6 @@ function Sidebar({
       <nav className="flex-1 overflow-y-auto scrollbar-hide p-2 space-y-3">
         {NAV_GROUPS.map(group => (
           <div key={group.label}>
-            {/* Group label — hide when collapsed */}
             {!collapsed && (
               <div className="px-2 pb-1 text-[9px] font-bold tracking-widest uppercase text-muted-foreground/60">
                 {group.label}
@@ -193,14 +190,29 @@ function Sidebar({
 export function POSApp() {
   const [screen, setScreen]       = useState<Screen>("tables");
   const [collapsed, setCollapsed] = useState(false);
-  const [activeTable, setActiveTable] = useState<string>("3");
-  const [cart, setCart] = useState<CartItem[]>([
-    { ...menuItems[1], qty: 1 },
-    { ...menuItems[3], qty: 2 },
-  ]);
+  const [activeTable, setActiveTable] = useState<string>(""); 
+  const [activeTableId, setActiveTableId] = useState<string | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-  const handleSelectTable = (tableLabel: string) => {
+  const handleSelectTable = async (tableId: string, tableLabel: string) => {
+    setActiveTableId(tableId);
     setActiveTable(tableLabel);
+
+    // Check if table has existing order
+    const { data: table } = await supabase
+      .from('tables')
+      .select('current_order_id')
+      .eq('id', tableId)
+      .single();
+
+    if (table?.current_order_id) {
+      setCurrentOrderId(table.current_order_id);
+    } else {
+      setCurrentOrderId(null);
+    }
+
+    setCart([]);
     setScreen("order");
   };
 
@@ -216,8 +228,31 @@ export function POSApp() {
       {/* ── Content ── */}
       <main className="flex flex-1 overflow-hidden bg-background min-w-0">
         {screen === "tables"    && <TableMapScreen onSelectTable={handleSelectTable} />}
-        {screen === "order"     && <OrderScreen cart={cart} setCart={setCart} onPay={() => setScreen("payment")} onBack={() => setScreen("tables")} tableLabel={activeTable} />}
-        {screen === "payment"   && <PaymentScreen cart={cart} onSuccess={() => setScreen("tables")} />}
+        {screen === "order"     && (
+          <OrderScreen
+            cart={cart}
+            setCart={setCart}
+            onPay={() => setScreen("payment")}
+            onBack={() => { setScreen("tables"); setCart([]); setCurrentOrderId(null); setActiveTableId(null); }}
+            tableLabel={activeTable}
+            tableId={activeTableId}
+            orderId={currentOrderId}
+            setOrderId={setCurrentOrderId}
+          />
+        )}
+        {screen === "payment"   && (
+          <PaymentScreen
+            cart={cart}
+            orderId={currentOrderId}
+            tableId={activeTableId}
+            onSuccess={() => {
+              setScreen("tables");
+              setCart([]);
+              setCurrentOrderId(null);
+              setActiveTableId(null);
+            }}
+          />
+        )}
         {screen === "kds"       && <KDSScreen />}
         {screen === "menu"      && <MenuMgmtScreen />}
         {screen === "stock"     && <StockScreen />}
