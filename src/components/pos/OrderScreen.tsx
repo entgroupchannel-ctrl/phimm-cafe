@@ -10,25 +10,24 @@ interface OrderScreenProps {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   onPay?: () => void;
   onBack?: () => void;
-  tableLabel?: string; // "1", "2", ... from TableMapScreen
+  tableLabel?: string;
 }
 
 const CATS = [
-  { key: "ทั้งหมด",         label: "ทั้งหมด"      },
-  { key: "ยอดนิยม",         label: "อาหารจานหลัก"  },
-  { key: "เครื่องดื่ม",     label: "เครื่องดื่ม"   },
-  { key: "ของหวาน",         label: "ของทานเล่น"    },
-  { key: "ของหวาน2",        label: "ของหวาน"       },
+  { key: "ทั้งหมด",     label: "ทั้งหมด"       },
+  { key: "ยอดนิยม",     label: "อาหารจานหลัก"   },
+  { key: "เครื่องดื่ม", label: "เครื่องดื่ม"    },
+  { key: "ของทานเล่น",  label: "ของทานเล่น"    },
+  { key: "ของหวาน",     label: "ของหวาน"        },
 ];
 
-// Simulated "already served" items on the table
 const SERVED_ITEMS = [
-  { id: 101, name: "ปอเปี๊ยะทอด",        nameEn: "Fried Spring Rolls",      price: 90,  qty: 1, status: "served" },
-  { id: 102, name: "ข้าวผัดกะเพราหมูสับ", nameEn: "Basil Pork Fried Rice",   price: 80,  qty: 1, status: "served" },
-  { id: 103, name: "น้ำมะนาว",            nameEn: "Lime Juice",               price: 50,  qty: 2, status: "served" },
-  { id: 104, name: "บัวลอยน้ำขิง",        nameEn: "Glutinous Rice Balls",     price: 70,  qty: 1, status: "served" },
-  { id: 105, name: "ผัดไทยกุ้งสด",        nameEn: "Pad Thai with Shrimp",     price: 180, qty: 1, status: "served" },
-  { id: 106, name: "ยำวุ้นเส้นทะเล",      nameEn: "Seafood Glass Noodle Salad",price: 220, qty: 1, status: "served" },
+  { id: 101, name: "ปอเปี๊ยะทอด",         nameEn: "Fried Spring Rolls",        price: 90,  qty: 1 },
+  { id: 102, name: "ข้าวผัดกะเพราหมูสับ",  nameEn: "Basil Pork Fried Rice",     price: 80,  qty: 1 },
+  { id: 103, name: "น้ำมะนาว",             nameEn: "Lime Juice",                price: 50,  qty: 2 },
+  { id: 104, name: "บัวลอยน้ำขิง",         nameEn: "Glutinous Rice Balls",      price: 70,  qty: 1 },
+  { id: 105, name: "ผัดไทยกุ้งสด",         nameEn: "Pad Thai with Shrimp",      price: 180, qty: 1 },
+  { id: 106, name: "ยำวุ้นเส้นทะเล",       nameEn: "Seafood Glass Noodle Salad",price: 220, qty: 1 },
 ];
 
 export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: OrderScreenProps) {
@@ -36,21 +35,17 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
   const [search, setSearch]       = useState("");
 
   const filtered = menuItems.filter(item => {
-    const matchCat =
-      activeCat === "ทั้งหมด"   ? true :
-      activeCat === "ยอดนิยม"   ? true : // show all in this tab as "main dishes"
-      item.cat === activeCat;
+    const matchCat    = activeCat === "ทั้งหมด" || activeCat === "ยอดนิยม" || item.cat === activeCat;
     const matchSearch = search === "" || item.name.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
-  const addToCart = (item: MenuItem) => {
+  const addToCart = (item: MenuItem) =>
     setCart(prev => {
       const ex = prev.find(c => c.id === item.id);
       if (ex) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, { ...item, qty: 1 }];
     });
-  };
 
   const removeFromCart = (id: number) =>
     setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
@@ -58,18 +53,18 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
   const deleteFromCart = (id: number) =>
     setCart(prev => prev.filter(c => c.id !== id));
 
-  const subtotal = SERVED_ITEMS.reduce((s, i) => s + i.price * i.qty, 0);
-  const newTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const grandTotal = subtotal + newTotal;
-  const totalQty   = SERVED_ITEMS.reduce((s, i) => s + i.qty, 0) + cart.reduce((s, c) => s + c.qty, 0);
+  const servedTotal = SERVED_ITEMS.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartTotal   = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const grandTotal  = servedTotal + cartTotal;
+  const totalQty    = SERVED_ITEMS.reduce((s, i) => s + i.qty, 0) + cart.reduce((s, c) => s + c.qty, 0);
 
   return (
     <div className="flex flex-1 overflow-hidden bg-background">
 
-      {/* ─── LEFT: Menu panel ─────────────────────────────── */}
+      {/* ─── LEFT: Menu panel ──────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="px-4 py-3 border-b border-border bg-[hsl(var(--surface))]">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -118,33 +113,24 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
                       : "border-border hover:border-border-light hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
                   )}
                 >
-                  {/* Cart badge */}
                   {inCart && (
                     <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.4)] z-10">
                       {inCart.qty}
                     </span>
                   )}
-                  {/* Popular badge */}
                   {item.popular && (
                     <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)] leading-none">
                       วันนี้
                     </span>
                   )}
-
                   <span className="text-[28px] leading-none mb-2">{item.img}</span>
-                  <div className="text-[13px] font-bold text-foreground leading-tight mb-0.5 line-clamp-2">
-                    {item.name}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mb-2 truncate w-full">
-                    {item.cat}
-                  </div>
+                  <div className="text-[13px] font-bold text-foreground leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                  <div className="text-[10px] text-muted-foreground mb-2 truncate w-full">{item.cat}</div>
                   <div className="flex items-center justify-between w-full">
                     <span className="font-mono font-bold text-[14px] tabular-nums" style={{ color: "hsl(var(--primary))" }}>
                       ฿{item.price}.00
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">
-                      {item.popular ? "10น." : "5น."}
-                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">{item.popular ? "10น." : "5น."}</span>
                   </div>
                 </button>
               );
@@ -153,13 +139,12 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
         </div>
       </div>
 
-      {/* ─── RIGHT: Current order panel ────────────────────── */}
+      {/* ─── RIGHT: Order panel ────────────────────────────────── */}
       <div className="w-[340px] shrink-0 flex flex-col bg-[hsl(var(--surface))] border-l border-border">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
           <div className="flex items-center gap-2.5">
-            {/* Back button */}
             <button
               onClick={onBack}
               className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
@@ -173,17 +158,17 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
                 <span className="text-[11px] text-muted-foreground font-medium">/ โต๊ะ {tableLabel}</span>
               </div>
               <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">👥 4 คน</span>
-                <span className="flex items-center gap-1">🕐 156ชม. 22น.</span>
+                <span>👥 4 คน</span>
+                <span>🕐 156ชม. 22น.</span>
                 <span>{totalQty} รายการ</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <button className="h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
               🔗 Party
             </button>
-            <button className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <button className="h-8 px-3 rounded-xl border border-border bg-muted text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors">
               🔄 ย้ายโต๊ะ
             </button>
           </div>
@@ -191,18 +176,15 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
 
         {/* Order list */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {/* Already served items */}
           {SERVED_ITEMS.map(item => (
             <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
                 <div className="text-[11px] text-muted-foreground">{item.nameEn}</div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(142_64%_38%/0.12)] text-[hsl(142_64%_35%)] border border-[hsl(142_64%_38%/0.25)]">
-                  เสิร์ฟแล้ว
-                </span>
-              </div>
+              <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(142_64%_38%/0.12)] text-[hsl(142_64%_35%)] border border-[hsl(142_64%_38%/0.25)]">
+                เสิร์ฟแล้ว
+              </span>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground text-[12px] font-bold">−</span>
                 <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
@@ -214,21 +196,18 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
             </div>
           ))}
 
-          {/* New cart items */}
           {cart.map(item => (
             <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-[hsl(var(--primary)/0.03)]">
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
                 <div className="text-[11px] text-muted-foreground">฿{item.price} / รายการ</div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)]">
-                  ใหม่
-                </span>
-              </div>
+              <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)]">
+                ใหม่
+              </span>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => removeFromCart(item.id)}
-                  className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))] hover:border-[hsl(var(--danger)/0.3)] transition-colors">
+                  className="w-6 h-6 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground hover:bg-[hsl(var(--danger)/0.1)] hover:text-[hsl(var(--danger))] transition-colors">
                   <Minus size={11} />
                 </button>
                 <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
@@ -240,7 +219,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
               <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">
                 ฿{(item.price * item.qty).toLocaleString()}.00
               </div>
-              <button onClick={() => deleteFromCart(item.id)} className="text-muted-foreground/40 hover:text-[hsl(var(--danger))] transition-colors">
+              <button onClick={() => deleteFromCart(item.id)} className="text-muted-foreground/40 hover:text-[hsl(var(--danger))] transition-colors shrink-0">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -263,9 +242,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: 
             </span>
           </div>
           <div className="flex gap-2">
-            <button
-              className="flex-1 h-12 rounded-2xl bg-[hsl(211_100%_50%/0.12)] text-primary border border-[hsl(211_100%_50%/0.25)] font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-[hsl(211_100%_50%/0.18)] transition-colors active:scale-[0.98]"
-            >
+            <button className="flex-1 h-12 rounded-2xl bg-[hsl(211_100%_50%/0.12)] text-primary border border-[hsl(211_100%_50%/0.25)] font-semibold text-[13px] flex items-center justify-center gap-2 hover:bg-[hsl(211_100%_50%/0.18)] transition-colors active:scale-[0.98]">
               <ChefHat size={16} />
               ส่งครัว / Send to Kitchen
             </button>
