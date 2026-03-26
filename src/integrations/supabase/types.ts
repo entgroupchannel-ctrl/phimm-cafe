@@ -96,6 +96,48 @@ export type Database = {
           },
         ]
       }
+      customer_visits: {
+        Row: {
+          amount_spent: number | null
+          channel: string | null
+          customer_id: string
+          id: string
+          order_id: string | null
+          visit_date: string | null
+        }
+        Insert: {
+          amount_spent?: number | null
+          channel?: string | null
+          customer_id: string
+          id?: string
+          order_id?: string | null
+          visit_date?: string | null
+        }
+        Update: {
+          amount_spent?: number | null
+          channel?: string | null
+          customer_id?: string
+          id?: string
+          order_id?: string | null
+          visit_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_visits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_visits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           allergens: string[] | null
@@ -224,6 +266,90 @@ export type Database = {
           webhook_secret?: string | null
         }
         Relationships: []
+      }
+      loyalty_tiers: {
+        Row: {
+          color: string | null
+          discount_pct: number | null
+          icon: string | null
+          id: string
+          label: string
+          min_points: number | null
+          multiplier: number | null
+          name: string
+          perks: string[] | null
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          discount_pct?: number | null
+          icon?: string | null
+          id?: string
+          label: string
+          min_points?: number | null
+          multiplier?: number | null
+          name: string
+          perks?: string[] | null
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          discount_pct?: number | null
+          icon?: string | null
+          id?: string
+          label?: string
+          min_points?: number | null
+          multiplier?: number | null
+          name?: string
+          perks?: string[] | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      loyalty_transactions: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          description: string | null
+          id: string
+          order_id: string | null
+          points_change: number
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points_change: number
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points_change?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       menu_categories: {
         Row: {
@@ -477,6 +603,7 @@ export type Database = {
           channel: Database["public"]["Enums"]["order_channel"] | null
           created_at: string | null
           customer_id: string | null
+          customer_phone: string | null
           delivery_platform_id: string | null
           discount_amount: number | null
           discount_note: string | null
@@ -503,6 +630,7 @@ export type Database = {
           channel?: Database["public"]["Enums"]["order_channel"] | null
           created_at?: string | null
           customer_id?: string | null
+          customer_phone?: string | null
           delivery_platform_id?: string | null
           discount_amount?: number | null
           discount_note?: string | null
@@ -529,6 +657,7 @@ export type Database = {
           channel?: Database["public"]["Enums"]["order_channel"] | null
           created_at?: string | null
           customer_id?: string | null
+          customer_phone?: string | null
           delivery_platform_id?: string | null
           discount_amount?: number | null
           discount_note?: string | null
@@ -1069,8 +1198,16 @@ export type Database = {
       }
     }
     Functions: {
+      earn_loyalty_points: {
+        Args: { p_amount: number; p_customer_id: string; p_order_id: string }
+        Returns: number
+      }
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
       receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
+      update_customer_tier: {
+        Args: { p_customer_id: string }
+        Returns: undefined
+      }
       verify_pin: {
         Args: { input_pin: string }
         Returns: {
