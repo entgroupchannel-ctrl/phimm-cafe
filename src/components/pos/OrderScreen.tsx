@@ -397,7 +397,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
       </div>
 
       {/* ─── RIGHT: Order panel ────────────────────────────────── */}
-      <div className="w-[340px] shrink-0 flex flex-col bg-[hsl(var(--surface))] border-l border-border">
+      <div className="w-[340px] shrink-0 flex flex-col overflow-hidden min-h-0 bg-[hsl(var(--surface))] border-l border-border">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
           <div className="flex items-center gap-2.5">
