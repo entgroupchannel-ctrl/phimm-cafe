@@ -266,6 +266,7 @@ export type Database = {
           name: string
           price: number
           sort_order: number | null
+          station: string | null
           updated_at: string | null
         }
         Insert: {
@@ -284,6 +285,7 @@ export type Database = {
           name: string
           price: number
           sort_order?: number | null
+          station?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -302,6 +304,7 @@ export type Database = {
           name?: string
           price?: number
           sort_order?: number | null
+          station?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -490,6 +493,95 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      purchase_order_items: {
+        Row: {
+          id: string
+          po_id: string
+          qty: number
+          stock_item_id: string
+          total_cost: number | null
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          po_id: string
+          qty: number
+          stock_item_id: string
+          total_cost?: number | null
+          unit_cost: number
+        }
+        Update: {
+          id?: string
+          po_id?: string
+          qty?: number
+          stock_item_id?: string
+          total_cost?: number | null
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string | null
+          id: string
+          note: string | null
+          ordered_at: string | null
+          po_number: string
+          received_at: string | null
+          staff_id: string | null
+          status: string | null
+          supplier: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          ordered_at?: string | null
+          po_number?: string
+          received_at?: string | null
+          staff_id?: string | null
+          status?: string | null
+          supplier?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          ordered_at?: string | null
+          po_number?: string
+          received_at?: string | null
+          staff_id?: string | null
+          status?: string | null
+          supplier?: string | null
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_permissions: {
         Row: {
@@ -867,6 +959,7 @@ export type Database = {
     }
     Functions: {
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
+      receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
       verify_pin: {
         Args: { input_pin: string }
         Returns: {
