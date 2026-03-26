@@ -219,7 +219,7 @@ function CustomizeModal({
 
         <div className="px-6 py-4 border-t border-border">
           <button onClick={() => {
-            onAdd({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty, note, options: selectedOptions, optionsText, priceAdd, cartId: 0 });
+            onAdd({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty, note, options: selectedOptions, optionsText, priceAdd });
             onClose();
           }} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
             เพิ่มลงตะกร้า — ฿{total}
