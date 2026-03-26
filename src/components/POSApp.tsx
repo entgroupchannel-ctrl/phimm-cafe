@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoginScreen } from "./pos/LoginScreen";
 import { OrderScreen, CartItem } from "./pos/OrderScreen";
 import { PaymentScreen } from "./pos/PaymentScreen";
 import { DashboardScreen } from "./pos/DashboardScreen";
@@ -22,7 +24,7 @@ import {
   ChefHat, BookOpen, Package,
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings,
-  Sun, Moon, Menu, LayoutGrid,
+  Sun, Moon, Menu, LayoutGrid, LogOut,
 } from "lucide-react";
 
 type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
@@ -31,36 +33,36 @@ const NAV_GROUPS = [
   {
     label: "การขาย",
     items: [
-      { key: "tables"    as Screen, icon: LayoutGrid,      label: "โต๊ะ"     },
-      { key: "order"     as Screen, icon: ShoppingCart,    label: "ออเดอร์"  },
-      { key: "payment"   as Screen, icon: CreditCard,      label: "ชำระเงิน" },
-      { key: "kiosk"     as Screen, icon: Monitor,         label: "Kiosk"    },
-      { key: "qr"        as Screen, icon: QrCode,          label: "QR โต๊ะ"  },
+      { key: "tables"  as Screen, icon: LayoutGrid,   label: "โต๊ะ",      permission: "view_tables"     },
+      { key: "order"   as Screen, icon: ShoppingCart,  label: "ออเดอร์",   permission: "create_order"    },
+      { key: "payment" as Screen, icon: CreditCard,    label: "ชำระเงิน",  permission: "process_payment" },
+      { key: "kiosk"   as Screen, icon: Monitor,       label: "Kiosk",     permission: "view_kiosk_mgmt" },
+      { key: "qr"      as Screen, icon: QrCode,        label: "QR โต๊ะ",   permission: "view_kiosk_mgmt" },
     ],
   },
   {
     label: "ร้านครัว",
     items: [
-      { key: "kds"       as Screen, icon: ChefHat,         label: "จอครัว"  },
-      { key: "menu"      as Screen, icon: BookOpen,         label: "เมนู"    },
-      { key: "stock"     as Screen, icon: Package,          label: "สต๊อก"   },
+      { key: "kds"   as Screen, icon: ChefHat,  label: "จอครัว",  permission: "view_kds"     },
+      { key: "menu"  as Screen, icon: BookOpen,  label: "เมนู",   permission: "manage_menu"  },
+      { key: "stock" as Screen, icon: Package,   label: "สต๊อก",  permission: "manage_stock" },
     ],
   },
   {
     label: "บริหาร",
     items: [
-      { key: "crm"       as Screen, icon: Users,            label: "ลูกค้า"  },
-      { key: "staff"     as Screen, icon: UserCog,          label: "พนักงาน" },
-      { key: "omni"      as Screen, icon: Globe,            label: "Omni"    },
-      { key: "dashboard" as Screen, icon: LayoutDashboard,  label: "Dashboard"},
+      { key: "crm"       as Screen, icon: Users,           label: "ลูกค้า",    permission: "view_crm"       },
+      { key: "staff"     as Screen, icon: UserCog,          label: "พนักงาน",   permission: "manage_staff"   },
+      { key: "omni"      as Screen, icon: Globe,            label: "Omni",      permission: "view_omni"      },
+      { key: "dashboard" as Screen, icon: LayoutDashboard,  label: "Dashboard", permission: "view_dashboard" },
     ],
   },
   {
     label: "เครื่องมือ",
     items: [
-      { key: "ai"        as Screen, icon: Bot,              label: "AI"      },
-      { key: "nutrition" as Screen, icon: Salad,            label: "โภชนา"   },
-      { key: "settings"  as Screen, icon: Settings,         label: "ตั้งค่า" },
+      { key: "ai"        as Screen, icon: Bot,      label: "AI",       permission: "view_ai"         },
+      { key: "nutrition" as Screen, icon: Salad,     label: "โภชนา",   permission: "view_dashboard"  },
+      { key: "settings"  as Screen, icon: Settings,  label: "ตั้งค่า",  permission: "manage_settings" },
     ],
   },
 ];
@@ -101,6 +103,8 @@ function Sidebar({
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
 }) {
+  const { staff, permissions, logout } = useAuth();
+
   return (
     <aside
       className={cn(
@@ -133,40 +137,45 @@ function Sidebar({
 
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide p-2 space-y-3">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            {!collapsed && (
-              <div className="px-2 pb-1 text-[9px] font-bold tracking-widest uppercase text-muted-foreground/60">
-                {group.label}
-              </div>
-            )}
-            {collapsed && <div className="h-px bg-border/50 mx-1 mb-2" />}
+        {NAV_GROUPS.map(group => {
+          const visibleItems = group.items.filter(item => permissions.includes(item.permission));
+          if (visibleItems.length === 0) return null;
 
-            <div className="space-y-0.5">
-              {group.items.map(item => {
-                const Icon = item.icon;
-                const active = screen === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setScreen(item.key)}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 select-none",
-                      collapsed ? "justify-center px-0 py-2.5 h-10" : "px-3 py-2 text-left",
-                      active
-                        ? "bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.28)]"
-                        : "text-foreground/70 hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} className="shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
+          return (
+            <div key={group.label}>
+              {!collapsed && (
+                <div className="px-2 pb-1 text-[9px] font-bold tracking-widest uppercase text-muted-foreground/60">
+                  {group.label}
+                </div>
+              )}
+              {collapsed && <div className="h-px bg-border/50 mx-1 mb-2" />}
+
+              <div className="space-y-0.5">
+                {visibleItems.map(item => {
+                  const Icon = item.icon;
+                  const active = screen === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => setScreen(item.key)}
+                      title={collapsed ? item.label : undefined}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 select-none",
+                        collapsed ? "justify-center px-0 py-2.5 h-10" : "px-3 py-2 text-left",
+                        active
+                          ? "bg-primary text-white shadow-[0_2px_8px_hsl(var(--primary)/0.28)]"
+                          : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon size={15} strokeWidth={active ? 2.2 : 1.8} className="shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}
@@ -174,13 +183,27 @@ function Sidebar({
         "border-t border-border/60 flex items-center bg-[hsl(var(--surface))]",
         collapsed ? "justify-center py-3 px-2 flex-col gap-2" : "justify-between p-3"
       )}>
-        {!collapsed && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] shadow-[0_0_5px_hsl(var(--success)/0.7)] animate-pulse" />
-            <span className="text-[11px] text-muted-foreground font-medium">ออนไลน์</span>
+        {!collapsed && staff && (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+              {staff.nickname?.charAt(0) || staff.name.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-foreground truncate">{staff.nickname || staff.name}</div>
+              <div className="text-[9px] text-muted-foreground truncate">{staff.roleLabel}</div>
+            </div>
           </div>
         )}
-        <DarkModeToggle />
+        <div className="flex items-center gap-1.5">
+          <DarkModeToggle />
+          <button
+            onClick={logout}
+            title="ออกจากระบบ"
+            className="flex items-center justify-center w-8 h-8 rounded-xl border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all"
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -188,18 +211,40 @@ function Sidebar({
 
 // ── App ────────────────────────────────────────────────────
 export function POSApp() {
+  const { isAuthenticated, isLoading, permissions } = useAuth();
   const [screen, setScreen]       = useState<Screen>("tables");
   const [collapsed, setCollapsed] = useState(false);
-  const [activeTable, setActiveTable] = useState<string>(""); 
+  const [activeTable, setActiveTable] = useState<string>("");
   const [activeTableId, setActiveTableId] = useState<string | null>(null);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Auto-navigate to first allowed screen
+  useEffect(() => {
+    if (isAuthenticated && permissions.length > 0) {
+      const allItems = NAV_GROUPS.flatMap(g => g.items);
+      const currentAllowed = allItems.find(i => i.key === screen && permissions.includes(i.permission));
+      if (!currentAllowed) {
+        const firstAllowed = allItems.find(i => permissions.includes(i.permission));
+        if (firstAllowed) setScreen(firstAllowed.key);
+      }
+    }
+  }, [isAuthenticated, permissions]);
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return <LoginScreen />;
 
   const handleSelectTable = async (tableId: string, tableLabel: string) => {
     setActiveTableId(tableId);
     setActiveTable(tableLabel);
 
-    // Check if table has existing order
     const { data: table } = await supabase
       .from('tables')
       .select('current_order_id')
@@ -225,7 +270,6 @@ export function POSApp() {
         setCollapsed={setCollapsed}
       />
 
-      {/* ── Content ── */}
       <main className="flex flex-1 overflow-hidden bg-background min-w-0">
         {screen === "tables"    && <TableMapScreen onSelectTable={handleSelectTable} />}
         {screen === "order"     && (
