@@ -1120,6 +1120,7 @@ export type Database = {
       }
       stock_items: {
         Row: {
+          category: string | null
           cost_per_unit: number | null
           id: string
           is_active: boolean | null
@@ -1131,6 +1132,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          category?: string | null
           cost_per_unit?: number | null
           id?: string
           is_active?: boolean | null
@@ -1142,6 +1144,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          category?: string | null
           cost_per_unit?: number | null
           id?: string
           is_active?: boolean | null
@@ -1242,6 +1245,45 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          line_id: string | null
+          name: string
+          note: string | null
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          line_id?: string | null
+          name: string
+          note?: string | null
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          line_id?: string | null
+          name?: string
+          note?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       tables: {
         Row: {
           current_order_id: string | null
@@ -1314,6 +1356,17 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_stock: {
+        Args: {
+          p_note?: string
+          p_quantity_change: number
+          p_reason: string
+          p_ref_order_id?: string
+          p_staff_id?: string
+          p_stock_item_id: string
+        }
+        Returns: undefined
+      }
       earn_loyalty_points: {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
