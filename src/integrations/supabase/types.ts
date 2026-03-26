@@ -317,15 +317,92 @@ export type Database = {
           },
         ]
       }
+      menu_option_groups: {
+        Row: {
+          id: string
+          menu_item_id: string | null
+          name: string
+          required: boolean | null
+          sort_order: number | null
+          type: string | null
+        }
+        Insert: {
+          id?: string
+          menu_item_id?: string | null
+          name: string
+          required?: boolean | null
+          sort_order?: number | null
+          type?: string | null
+        }
+        Update: {
+          id?: string
+          menu_item_id?: string | null
+          name?: string
+          required?: boolean | null
+          sort_order?: number | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_option_groups_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_options: {
+        Row: {
+          id: string
+          is_default: boolean | null
+          name: string
+          option_group_id: string
+          price_add: number | null
+          sort_order: number | null
+        }
+        Insert: {
+          id?: string
+          is_default?: boolean | null
+          name: string
+          option_group_id: string
+          price_add?: number | null
+          sort_order?: number | null
+        }
+        Update: {
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          option_group_id?: string
+          price_add?: number | null
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_options_option_group_id_fkey"
+            columns: ["option_group_id"]
+            isOneToOne: false
+            referencedRelation: "menu_option_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
+          cooking_seconds: number | null
+          cooking_started_at: string | null
           created_at: string | null
+          handed_at: string | null
+          handed_to: string | null
           id: string
           menu_item_id: string
           name: string
           note: string | null
+          options: Json | null
+          options_text: string | null
           order_id: string
           price: number
+          price_add: number | null
           qty: number
           ready_at: string | null
           sent_at: string | null
@@ -334,13 +411,20 @@ export type Database = {
           status: Database["public"]["Enums"]["order_item_status"] | null
         }
         Insert: {
+          cooking_seconds?: number | null
+          cooking_started_at?: string | null
           created_at?: string | null
+          handed_at?: string | null
+          handed_to?: string | null
           id?: string
           menu_item_id: string
           name: string
           note?: string | null
+          options?: Json | null
+          options_text?: string | null
           order_id: string
           price: number
+          price_add?: number | null
           qty?: number
           ready_at?: string | null
           sent_at?: string | null
@@ -349,13 +433,20 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_item_status"] | null
         }
         Update: {
+          cooking_seconds?: number | null
+          cooking_started_at?: string | null
           created_at?: string | null
+          handed_at?: string | null
+          handed_to?: string | null
           id?: string
           menu_item_id?: string
           name?: string
           note?: string | null
+          options?: Json | null
+          options_text?: string | null
           order_id?: string
           price?: number
+          price_add?: number | null
           qty?: number
           ready_at?: string | null
           sent_at?: string | null
@@ -955,7 +1046,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      cooking_performance: {
+        Row: {
+          avg_minutes: number | null
+          avg_seconds: number | null
+          max_seconds: number | null
+          menu_item_id: string | null
+          menu_name: string | null
+          min_seconds: number | null
+          station: string | null
+          total_cooked: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }

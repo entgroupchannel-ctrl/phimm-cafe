@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // ── Types ─────────────────────────────────────────────────
 interface KDSItem {
@@ -10,6 +12,9 @@ interface KDSItem {
   station: string | null;
   note: string | null;
   status: string;
+  optionsText: string | null;
+  cookingStartedAt: string | null;
+  cookingSeconds: number | null;
 }
 
 interface KDSOrder {
@@ -68,12 +73,33 @@ function playAlert() {
   } catch {}
 }
 
+function playSuccess() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
+      osc.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.2);
+    });
+  } catch {}
+}
+
+function formatTime(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  if (m >= 60) return `${Math.floor(m / 60)}h ${m % 60}m`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 // ── Order Card ────────────────────────────────────────────
-function OrderCard({ order, now, onBumpAll, onBumpItem, soundOn }: {
+function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
   order: KDSOrder;
   now: number;
-  onBumpAll: (orderId: string, newStatus: string) => void;
   onBumpItem: (itemId: string, currentStatus: string) => void;
+  onHandoff: (order: KDSOrder) => void;
   soundOn: boolean;
 }) {
   const isNew     = order.status === "new";
@@ -83,13 +109,6 @@ function OrderCard({ order, now, onBumpAll, onBumpItem, soundOn }: {
   const elapsed = order.sentAt ? Math.max(0, Math.floor((now - new Date(order.sentAt).getTime()) / 1000)) : 0;
   const elapsedMins = elapsed / 60;
   const isLate = elapsedMins > 10 && !isReady;
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    if (m >= 60) return `${Math.floor(m / 60)}h ${m % 60}m`;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
 
   const cardBorder = isReady
     ? "border-success/60 shadow-[0_0_20px_hsl(var(--success)/0.12)]"
@@ -115,7 +134,7 @@ function OrderCard({ order, now, onBumpAll, onBumpItem, soundOn }: {
             </span>
           )}
           {isLate && (
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-danger/15 text-danger border border-danger/40">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-danger/15 text-danger border border-danger/40 animate-pulse">
               🔴 ล่าช้า!
             </span>
           )}
@@ -152,42 +171,75 @@ function OrderCard({ order, now, onBumpAll, onBumpItem, soundOn }: {
         </div>
       </div>
 
-      {/* Items — clickable to bump individual */}
+      {/* Items */}
       <div className="px-4 py-1">
         {order.items.map((item, i) => {
           const isDone = item.status === "ready" || item.status === "served";
           const isCk = item.status === "cooking";
           const st = STATIONS.find(s => s.id === item.station);
+
+          // Cooking timer
+          let cookingTimer: string | null = null;
+          let timerColor = "text-success";
+          if (isCk && item.cookingStartedAt) {
+            const diff = Math.max(0, Math.floor((now - new Date(item.cookingStartedAt).getTime()) / 1000));
+            cookingTimer = formatTime(diff);
+            const mins = diff / 60;
+            if (mins > 10) timerColor = "text-danger animate-pulse";
+            else if (mins > 5) timerColor = "text-warning";
+          }
+
           return (
             <div key={item.id}
-              onClick={() => onBumpItem(item.id, item.status)}
+              onClick={() => !isDone && onBumpItem(item.id, item.status)}
               className={cn(
-                "flex items-center gap-2.5 py-2 cursor-pointer select-none transition-opacity",
+                "flex items-start gap-2.5 py-2.5 cursor-pointer select-none transition-opacity",
                 i < order.items.length - 1 && "border-b border-border",
                 isDone && "opacity-40"
               )}>
               <div className={cn(
-                "w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black border-2 transition-all shrink-0",
+                "w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-black border-2 transition-all shrink-0 mt-0.5",
                 isDone ? "bg-success border-success text-white" : isCk ? "bg-warning border-warning text-white" : "border-border bg-background"
               )}>
                 {isDone ? "✓" : isCk ? "🔥" : ""}
               </div>
               {st && (
-                <span className={cn("px-1.5 py-0.5 rounded-md text-[10px] font-bold border shrink-0", stationColor(st.colorVar))}>
+                <span className={cn("px-1.5 py-0.5 rounded-md text-[10px] font-bold border shrink-0 mt-0.5", stationColor(st.colorVar))}>
                   {st.icon}
                 </span>
               )}
               <div className="flex-1 min-w-0">
-                <span className={cn(
-                  "text-[13px] font-bold",
-                  isDone ? "line-through text-muted-foreground" : "text-foreground"
-                )}>
-                  {item.name} <span className="font-mono text-accent">×{item.qty}</span>
-                </span>
-                {item.note && (
-                  <div className="text-[10px] text-warning font-semibold mt-0.5">⚠️ {item.note}</div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-[13px] font-bold",
+                    isDone ? "line-through text-muted-foreground" : "text-foreground"
+                  )}>
+                    {item.name} <span className="font-mono text-accent">×{item.qty}</span>
+                  </span>
+                  {cookingTimer && (
+                    <span className={cn("font-mono text-[11px] font-extrabold tabular-nums", timerColor)}>
+                      🔥 {cookingTimer}
+                    </span>
+                  )}
+                  {isDone && item.cookingSeconds && (
+                    <span className="font-mono text-[10px] text-success tabular-nums">⏱ {formatTime(item.cookingSeconds)}</span>
+                  )}
+                </div>
+                {item.optionsText && (
+                  <div className="text-[10px] text-warning font-semibold mt-0.5">⚠️ {item.optionsText}</div>
+                )}
+                {item.note && !item.optionsText?.includes(item.note) && (
+                  <div className="text-[10px] text-primary font-semibold mt-0.5">📝 {item.note}</div>
                 )}
               </div>
+              {!isDone && (
+                <span className={cn(
+                  "shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border min-h-[32px] flex items-center",
+                  isCk ? "bg-warning/10 text-warning border-warning/30" : "bg-danger/10 text-danger border-danger/30"
+                )}>
+                  {isCk ? "กดเมื่อเสร็จ →" : "กดเริ่มทำ →"}
+                </span>
+              )}
             </div>
           );
         })}
@@ -196,31 +248,80 @@ function OrderCard({ order, now, onBumpAll, onBumpItem, soundOn }: {
       {/* Actions */}
       <div className="px-3 py-3 flex gap-2">
         {isNew && (
-          <button onClick={() => onBumpAll(order.orderId, "cooking")}
-            className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-warning hover:opacity-90 transition-opacity">
-            🔥 เริ่มทำ
-          </button>
-        )}
-        {isCooking && allReady && (
-          <button onClick={() => onBumpAll(order.orderId, "ready")}
-            className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-success hover:opacity-90 transition-opacity shadow-[0_4px_16px_hsl(var(--success)/0.3)]">
-            ✅ พร้อมเสิร์ฟ
+          <button onClick={() => order.items.forEach(it => { if (it.status === "sent") onBumpItem(it.id, "sent"); })}
+            className="flex-1 min-h-[44px] py-2.5 rounded-xl text-[13px] font-bold text-white bg-warning hover:opacity-90 transition-opacity">
+            🔥 เริ่มทำทั้งหมด
           </button>
         )}
         {isCooking && !allReady && (
-          <button onClick={() => onBumpAll(order.orderId, "ready")}
-            className="flex-1 py-2.5 rounded-xl text-[13px] font-bold border border-success/40 text-success bg-success/10 hover:bg-success/20 transition-colors">
+          <button onClick={() => order.items.forEach(it => { if (it.status === "cooking") onBumpItem(it.id, "cooking"); })}
+            className="flex-1 min-h-[44px] py-2.5 rounded-xl text-[13px] font-bold border border-success/40 text-success bg-success/10 hover:bg-success/20 transition-colors">
             ✅ เสร็จทั้งหมด
           </button>
         )}
-        {isReady && (
-          <button onClick={() => onBumpAll(order.orderId, "served")}
-            className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
-            🍽 เสิร์ฟแล้ว
+        {allReady && (
+          <button onClick={() => onHandoff(order)}
+            className={cn(
+              "flex-1 min-h-[56px] py-3 rounded-xl text-[16px] font-extrabold text-white bg-[hsl(142_64%_38%)] shadow-[0_4px_16px_hsl(142_64%_38%/0.35)] hover:bg-[hsl(142_64%_34%)] transition-all",
+              isReady && "animate-pulse"
+            )}>
+            🍽 ส่งมอบ
           </button>
         )}
       </div>
     </div>
+  );
+}
+
+// ── Handoff Modal ─────────────────────────────────────────
+function HandoffModal({ order, open, onClose, onConfirm }: {
+  order: KDSOrder | null;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!order) return null;
+
+  const cookedItems = order.items.filter(i => i.cookingSeconds && i.cookingSeconds > 0);
+  const maxSecs = cookedItems.length > 0 ? Math.max(...cookedItems.map(i => i.cookingSeconds!)) : 0;
+  const avgSecs = cookedItems.length > 0 ? Math.round(cookedItems.reduce((s, i) => s + i.cookingSeconds!, 0) / cookedItems.length) : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden rounded-2xl border-border bg-[hsl(var(--surface))]">
+        <div className="px-5 py-4 border-b border-border">
+          <div className="text-[16px] font-black text-foreground">🍽 ส่งมอบออเดอร์ {order.orderNumber}</div>
+          <div className="text-[12px] text-muted-foreground mt-0.5">{order.delivery ? "🛵" : "🪑"} {order.table}</div>
+        </div>
+        <div className="px-5 py-3 space-y-2 max-h-[40vh] overflow-y-auto">
+          {order.items.map(item => (
+            <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0">
+              <div className="flex-1 min-w-0">
+                <span className="text-[13px] font-semibold text-foreground">{item.name} <span className="font-mono text-accent">×{item.qty}</span></span>
+                {item.optionsText && <div className="text-[10px] text-warning truncate">{item.optionsText}</div>}
+              </div>
+              {item.cookingSeconds && item.cookingSeconds > 0 && (
+                <span className="font-mono text-[12px] text-muted-foreground tabular-nums shrink-0 ml-2">⏱ {formatTime(item.cookingSeconds)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="px-5 py-3 border-t border-border space-y-1 text-[12px] text-muted-foreground">
+          <div>⏱ เวลารวม: <strong className="text-foreground font-mono">{formatTime(maxSecs)}</strong> (นานสุด)</div>
+          <div>📊 เฉลี่ย: <strong className="text-foreground font-mono">{formatTime(avgSecs)}</strong> ต่อจาน</div>
+        </div>
+        <div className="px-5 pb-5 space-y-2">
+          <button onClick={onConfirm}
+            className="w-full h-14 rounded-2xl bg-[hsl(142_64%_38%)] text-white text-[15px] font-extrabold flex items-center justify-center gap-2 shadow-[0_4px_16px_hsl(142_64%_38%/0.35)] hover:bg-[hsl(142_64%_34%)] transition-colors active:scale-[0.98]">
+            ✅ ยืนยันส่งมอบ
+          </button>
+          <button onClick={onClose}
+            className="w-full h-10 rounded-2xl border border-border bg-muted text-muted-foreground text-[13px] font-semibold hover:text-foreground transition-colors">
+            ยกเลิก
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -230,8 +331,10 @@ export function KDSScreen() {
   const [station, setStation] = useState("all");
   const [now, setNow] = useState(Date.now());
   const [soundOn, setSoundOn] = useState(true);
-  const [stats, setStats] = useState({ served: 0, avgMin: 0, onTime: 0, cancelled: 0 });
+  const [stats, setStats] = useState({ served: 0, avgSec: 0, minSec: 0, maxSec: 0, onTime: 100, cancelled: 0 });
+  const [handoffOrder, setHandoffOrder] = useState<KDSOrder | null>(null);
   const prevCountRef = useRef(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -241,7 +344,6 @@ export function KDSScreen() {
   useEffect(() => {
     fetchKDSOrders();
     fetchStats();
-
     const channel = supabase
       .channel("kds-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, (payload) => {
@@ -252,7 +354,6 @@ export function KDSScreen() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { fetchKDSOrders(); fetchStats(); })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [soundOn]);
 
@@ -260,7 +361,7 @@ export function KDSScreen() {
     const { data, error } = await supabase
       .from("order_items")
       .select(`
-        id, name, qty, note, status, station, sent_at, ready_at,
+        id, name, qty, note, status, station, sent_at, ready_at, options_text, cooking_started_at, cooking_seconds,
         order_id,
         orders!inner (
           id, order_number, table_id, order_type, channel,
@@ -294,6 +395,8 @@ export function KDSScreen() {
       grouped[oid].items.push({
         id: item.id, name: item.name, qty: item.qty,
         station: item.station, note: item.note, status: item.status,
+        optionsText: item.options_text, cookingStartedAt: item.cooking_started_at,
+        cookingSeconds: item.cooking_seconds,
       });
       if (item.status === "sent") grouped[oid].status = "new";
       else if (item.status === "cooking" && grouped[oid].status !== "new") grouped[oid].status = "cooking";
@@ -309,37 +412,57 @@ export function KDSScreen() {
     const today = new Date().toISOString().split("T")[0];
     const { data } = await supabase
       .from("order_items")
-      .select("status, sent_at, ready_at")
+      .select("status, cooking_seconds")
       .gte("created_at", today + "T00:00:00")
       .in("status", ["served", "ready", "cooking", "sent", "cancelled"]);
 
     if (!data) return;
     const served = data.filter(d => d.status === "served").length;
     const cancelled = data.filter(d => d.status === "cancelled").length;
-    const withTimes = data.filter(d => d.sent_at && d.ready_at);
-    const avgMs = withTimes.length > 0
-      ? withTimes.reduce((s, d) => s + (new Date(d.ready_at!).getTime() - new Date(d.sent_at!).getTime()), 0) / withTimes.length
-      : 0;
-    const avgMin = Math.round(avgMs / 60000 * 10) / 10;
-    const onTime = withTimes.length > 0
-      ? Math.round(withTimes.filter(d => (new Date(d.ready_at!).getTime() - new Date(d.sent_at!).getTime()) < 600000).length / withTimes.length * 100)
+    const cooked = data.filter(d => (d as any).cooking_seconds > 0);
+    const avgSec = cooked.length > 0 ? Math.round(cooked.reduce((s, d) => s + (d as any).cooking_seconds, 0) / cooked.length) : 0;
+    const minSec = cooked.length > 0 ? Math.min(...cooked.map(d => (d as any).cooking_seconds)) : 0;
+    const maxSec = cooked.length > 0 ? Math.max(...cooked.map(d => (d as any).cooking_seconds)) : 0;
+    const onTime = cooked.length > 0
+      ? Math.round(cooked.filter(d => (d as any).cooking_seconds <= 600).length / cooked.length * 100)
       : 100;
-    setStats({ served, avgMin, onTime, cancelled });
+    setStats({ served, avgSec, minSec, maxSec, onTime, cancelled });
   }
 
   async function bumpItem(itemId: string, currentStatus: string) {
-    const nextStatus = currentStatus === "sent" ? "cooking" : currentStatus === "cooking" ? "ready" : null;
-    if (!nextStatus) return;
-    const updateData: Record<string, any> = { status: nextStatus };
-    if (nextStatus === "ready") updateData.ready_at = new Date().toISOString();
-    await supabase.from("order_items").update(updateData).eq("id", itemId);
+    if (currentStatus === "sent") {
+      await supabase.from("order_items").update({
+        status: "cooking" as any,
+        cooking_started_at: new Date().toISOString(),
+      }).eq("id", itemId);
+    } else if (currentStatus === "cooking") {
+      // Fetch cooking_started_at to calculate duration
+      const { data: item } = await supabase.from("order_items").select("cooking_started_at").eq("id", itemId).single();
+      const startedAt = item?.cooking_started_at ? new Date(item.cooking_started_at) : null;
+      const cookingSeconds = startedAt ? Math.round((Date.now() - startedAt.getTime()) / 1000) : null;
+
+      await supabase.from("order_items").update({
+        status: "ready" as any,
+        ready_at: new Date().toISOString(),
+        cooking_seconds: cookingSeconds,
+      }).eq("id", itemId);
+    }
   }
 
-  async function bumpAllItems(orderId: string, newStatus: string) {
-    const updateData: Record<string, any> = { status: newStatus };
-    if (newStatus === "ready") updateData.ready_at = new Date().toISOString();
-    if (newStatus === "served") updateData.served_at = new Date().toISOString();
-    await supabase.from("order_items").update(updateData).eq("order_id", orderId).neq("status", "cancelled");
+  async function handoffConfirm() {
+    if (!handoffOrder) return;
+    await supabase.from("order_items").update({
+      status: "served" as any,
+      served_at: new Date().toISOString(),
+      handed_at: new Date().toISOString(),
+    }).eq("order_id", handoffOrder.orderId).in("status", ["ready"]);
+
+    await supabase.from("orders").update({ status: "served" as any }).eq("id", handoffOrder.orderId);
+
+    playSuccess();
+    toast({ title: "ส่งมอบเรียบร้อย! 🍽", description: `ออเดอร์ ${handoffOrder.orderNumber} ถูกส่งไปเสิร์ฟแล้ว` });
+    setHandoffOrder(null);
+    fetchStats();
   }
 
   const filtered = station === "all" ? orders : orders.filter(o => o.items.some(it => it.station === station));
@@ -368,7 +491,7 @@ export function KDSScreen() {
           <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[16px] shadow-primary">K</div>
           <div>
             <div className="text-[15px] font-extrabold text-gradient-primary leading-tight">POSAI Kitchen Display</div>
-            <div className="text-[10px] text-muted-foreground">Smart KDS · Realtime · แจ้งเตือนล่าช้า</div>
+            <div className="text-[10px] text-muted-foreground">Smart KDS · Realtime · Cooking Timer</div>
           </div>
         </div>
 
@@ -434,7 +557,7 @@ export function KDSScreen() {
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", alignItems: "start" }}>
             {sorted.map(order => (
-              <OrderCard key={order.orderId} order={order} now={now} onBumpAll={bumpAllItems} onBumpItem={bumpItem} soundOn={soundOn} />
+              <OrderCard key={order.orderId} order={order} now={now} onBumpItem={bumpItem} onHandoff={setHandoffOrder} soundOn={soundOn} />
             ))}
           </div>
         )}
@@ -444,7 +567,9 @@ export function KDSScreen() {
       <div className="px-5 py-2.5 bg-card border-t border-border flex items-center justify-between shrink-0">
         <div className="flex gap-5 text-[12px]">
           <span className="text-muted-foreground">📊 วันนี้: เสิร์ฟแล้ว <strong className="text-success font-mono">{stats.served}</strong></span>
-          <span className="text-muted-foreground">⏱ เฉลี่ย <strong className="text-accent font-mono">{stats.avgMin} นาที</strong></span>
+          <span className="text-muted-foreground">⏱ เฉลี่ย <strong className="text-accent font-mono">{formatTime(stats.avgSec)}</strong></span>
+          <span className="text-muted-foreground">🏆 เร็วสุด <strong className="text-success font-mono">{formatTime(stats.minSec)}</strong></span>
+          <span className="text-muted-foreground">🐌 ช้าสุด <strong className="text-warning font-mono">{formatTime(stats.maxSec)}</strong></span>
           <span className="text-muted-foreground">🎯 ตรงเวลา <strong className="text-success font-mono">{stats.onTime}%</strong></span>
           <span className="text-muted-foreground">❌ ยกเลิก <strong className={cn("font-mono", stats.cancelled > 0 ? "text-danger" : "text-success")}>{stats.cancelled}</strong></span>
         </div>
@@ -453,6 +578,9 @@ export function KDSScreen() {
           <span>{soundOn ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"}</span>
         </button>
       </div>
+
+      {/* Handoff Modal */}
+      <HandoffModal order={handoffOrder} open={!!handoffOrder} onClose={() => setHandoffOrder(null)} onConfirm={handoffConfirm} />
     </div>
   );
 }
