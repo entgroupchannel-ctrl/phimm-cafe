@@ -866,7 +866,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
+      verify_pin: {
+        Args: { input_pin: string }
+        Returns: {
+          role_id: string
+          role_label: string
+          role_name: string
+          staff_id: string
+          staff_name: string
+          staff_nickname: string
+        }[]
+      }
     }
     Enums: {
       order_channel:
