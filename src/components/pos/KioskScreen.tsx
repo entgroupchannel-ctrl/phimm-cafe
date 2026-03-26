@@ -1,96 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
-// ── Data ──────────────────────────────────────────────────
-const KIOSK_MENU = [
-  { id: 1,  name: "ข้าวผัดกุ้ง",      price: 89,  cat: "จานหลัก",    img: "🍛", cal: 520, popular: true,  allergens: ["กุ้ง"],           desc: "ข้าวผัดกุ้งสด ไข่ดาว ผักสด"         },
-  { id: 2,  name: "ต้มยำกุ้ง",        price: 159, cat: "จานหลัก",    img: "🍲", cal: 280, popular: true,  allergens: ["กุ้ง"],           desc: "ต้มยำกุ้งน้ำข้น เข้มข้น หอมสมุนไพร" },
-  { id: 3,  name: "ส้มตำไทย",         price: 69,  cat: "จานหลัก",    img: "🥗", cal: 180, popular: false, allergens: ["ถั่ว"],           desc: "ส้มตำไทยรสจัด กุ้งแห้ง ถั่วลิสง"   },
-  { id: 4,  name: "ผัดไทยกุ้งสด",     price: 89,  cat: "จานหลัก",    img: "🍜", cal: 450, popular: true,  allergens: ["กุ้ง","ถั่ว","ไข่"], desc: "ผัดไทยเส้นจันท์ กุ้งสด ไข่ ถั่วงอก" },
-  { id: 5,  name: "แกงเขียวหวาน",     price: 99,  cat: "จานหลัก",    img: "🍛", cal: 380, popular: false, allergens: ["นม"],             desc: "แกงเขียวหวานไก่ กะทิสด"             },
-  { id: 6,  name: "ข้าวมันไก่",       price: 65,  cat: "จานหลัก",    img: "🍗", cal: 480, popular: true,  allergens: [],                 desc: "ข้าวมันไก่ต้ม น้ำจิ้มสูตรเด็ด"      },
-  { id: 7,  name: "ชาเย็น",           price: 45,  cat: "เครื่องดื่ม", img: "🧋", cal: 220, popular: true,  allergens: ["นม"],             desc: "ชาไทยเย็น หวานมัน"                  },
-  { id: 8,  name: "กาแฟเย็น",         price: 55,  cat: "เครื่องดื่ม", img: "☕", cal: 150, popular: false, allergens: ["นม"],             desc: "กาแฟโรบัสต้าเย็น"                   },
-  { id: 9,  name: "น้ำมะนาวโซดา",     price: 45,  cat: "เครื่องดื่ม", img: "🍋", cal: 80,  popular: false, allergens: [],                 desc: "น้ำมะนาวโซดาสดชื่น"                 },
-  { id: 10, name: "สมูทตี้เบอร์รี่",   price: 75,  cat: "เครื่องดื่ม", img: "🫐", cal: 180, popular: false, allergens: ["นม"],             desc: "มิกซ์เบอร์รี่ปั่น โยเกิร์ต"         },
-  { id: 11, name: "ข้าวเหนียวมะม่วง",  price: 89,  cat: "ของหวาน",    img: "🥭", cal: 350, popular: true,  allergens: ["นม"],             desc: "มะม่วงน้ำดอกไม้ กะทิสด"            },
-  { id: 12, name: "ไอศกรีมกะทิ",      price: 49,  cat: "ของหวาน",    img: "🍨", cal: 250, popular: false, allergens: ["นม","ถั่ว"],      desc: "ไอศกรีมกะทิ ถั่วลิสง ข้าวเหนียว"   },
-  { id: 13, name: "บัวลอยไข่หวาน",    price: 55,  cat: "ของหวาน",    img: "🍡", cal: 200, popular: false, allergens: ["ไข่","นม"],       desc: "บัวลอยน้ำกะทิ ไข่หวาน"             },
-  { id: 14, name: "เฟรนช์ฟรายส์",     price: 59,  cat: "ของทานเล่น", img: "🍟", cal: 320, popular: false, allergens: ["กลูเตน"],         desc: "มันฝรั่งทอดกรอบ ซอสพิเศษ"          },
-  { id: 15, name: "ปีกไก่ทอด",        price: 79,  cat: "ของทานเล่น", img: "🍗", cal: 420, popular: true,  allergens: ["กลูเตน"],         desc: "ปีกไก่ทอดกรอบ 6 ชิ้น"              },
-];
+// ── Types ─────────────────────────────────────────────────
+interface KioskMenuItem {
+  id: string;
+  name: string;
+  price: number;
+  cat: string;
+  img: string;
+  cal: number | null;
+  popular: boolean;
+  allergens: string[];
+  desc: string;
+}
 
-const UPSELL_RULES = [
-  { trigger: "จานหลัก",    suggest: "เครื่องดื่ม", msg: "🧋 เพิ่มเครื่องดื่มคู่กัน?",  discount: 10 },
-  { trigger: "จานหลัก",    suggest: "ของทานเล่น", msg: "🍟 เพิ่มของทานเล่น?",           discount: 15 },
-  { trigger: "เครื่องดื่ม", suggest: "ของหวาน",    msg: "🍨 ปิดท้ายด้วยของหวาน?",       discount: 10 },
-];
+interface OptionGroup {
+  id: string;
+  name: string;
+  type: string;
+  required: boolean;
+  menu_options: { id: string; name: string; price_add: number; is_default: boolean; sort_order: number }[];
+}
 
-const CATS = ["ทั้งหมด", "⭐ ยอดนิยม", "จานหลัก", "เครื่องดื่ม", "ของหวาน", "ของทานเล่น"];
-const ALL_ALLERGENS = ["กุ้ง", "ถั่ว", "นม", "ไข่", "กลูเตน"];
-const SPICE_LEVELS = ["ไม่เผ็ด", "เผ็ดน้อย", "ปกติ", "เผ็ดมาก", "เผ็ดสุดๆ"];
-const ADDONS = [
-  { name: "ไข่ดาว",   price: 15, img: "🍳" },
-  { name: "ข้าวเพิ่ม", price: 10, img: "🍚" },
-  { name: "ผักเพิ่ม",  price: 10, img: "🥬" },
-  { name: "กุ้งเพิ่ม", price: 30, img: "🦐" },
-];
+interface CartEntry {
+  id: string;
+  name: string;
+  price: number;
+  img: string;
+  cat: string;
+  qty: number;
+  note: string;
+  options: { group: string; name: string; price_add: number }[];
+  optionsText: string;
+  priceAdd: number;
+  cartId: number;
+}
 
-type KioskItem = typeof KIOSK_MENU[number];
-type CartEntry = KioskItem & { cartId: number; qty: number; spice: string; addons: string[]; note: string; };
+interface KioskScreenProps {
+  tableId?: string | null;
+  tableLabel?: string | null;
+  isPublic?: boolean;
+}
 
 const STEPS = { WELCOME: 0, MENU: 1, PAYMENT: 2, DONE: 3 };
 
 // ── Welcome ───────────────────────────────────────────────
-function WelcomeScreen({ onStart }: { onStart: (type: "dinein" | "takeaway") => void }) {
+function WelcomeScreen({ onStart, tableLabel }: { onStart: (type: "dinein" | "takeaway") => void; tableLabel?: string | null }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-10 text-center relative overflow-hidden">
-      {/* radial glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.08),transparent_70%)]" />
-
       <div className="relative z-10 flex flex-col items-center">
-        {/* Logo */}
         <div className="mb-6 relative">
           <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150" />
-          <img
-            src={phimmLogo}
-            alt="Phimm Cafe"
-            className="relative w-28 h-28 object-contain drop-shadow-[0_8px_24px_hsl(var(--primary)/0.25)]"
-          />
+          <img src={phimmLogo} alt="Phimm Cafe" className="relative w-28 h-28 object-contain drop-shadow-[0_8px_24px_hsl(var(--primary)/0.25)]" />
         </div>
         <h1 className="text-[38px] font-black text-foreground leading-tight mb-1 text-balance">Phimm Cafe</h1>
+        {tableLabel && <p className="text-[15px] font-bold text-primary mb-1">📍 {tableLabel}</p>}
         <p className="text-[15px] text-muted-foreground mb-1 tracking-wide">ยินดีต้อนรับ</p>
         <p className="text-[14px] text-muted-foreground mb-10 max-w-sm">
           สั่งอาหาร · จ่ายเงิน · รับอาหาร<br />ทั้งหมดจากหน้าจอนี้ — ไม่ต้องรอพนักงาน
         </p>
-
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <button
-            onClick={() => onStart("dinein")}
-            className="w-full py-4 rounded-2xl text-[16px] font-bold text-white gradient-primary shadow-primary-lg hover:opacity-90 transition-opacity"
-          >
-            🪑 ทานที่ร้าน
-          </button>
-          <button
-            onClick={() => onStart("takeaway")}
+          {!tableLabel && (
+            <button onClick={() => onStart("dinein")}
+              className="w-full py-4 rounded-2xl text-[16px] font-bold text-white gradient-primary shadow-primary-lg hover:opacity-90 transition-opacity">
+              🪑 ทานที่ร้าน
+            </button>
+          )}
+          {tableLabel && (
+            <button onClick={() => onStart("dinein")}
+              className="w-full py-4 rounded-2xl text-[16px] font-bold text-white gradient-primary shadow-primary-lg hover:opacity-90 transition-opacity">
+              🪑 สั่งอาหาร — {tableLabel}
+            </button>
+          )}
+          <button onClick={() => onStart("takeaway")}
             className="w-full py-4 rounded-2xl text-[16px] font-bold text-white bg-accent hover:opacity-90 transition-opacity"
-            style={{ boxShadow: "0 4px 20px hsl(var(--accent)/0.35)" }}
-          >
+            style={{ boxShadow: "0 4px 20px hsl(var(--accent)/0.35)" }}>
             📦 สั่งกลับบ้าน
           </button>
         </div>
-
         <div className="flex gap-5 mt-8 text-[11px] text-muted-foreground">
           <span>🌐 EN / 中文 / 日本語</span>
           <span>♿ ช่วยเหลือพิเศษ</span>
         </div>
-      </div>
-
-      {/* Bottom stats */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-6 text-[10px] text-muted-foreground whitespace-nowrap">
-        <span>📊 ลูกค้า 61% ชอบ Kiosk มากกว่าสั่งกับพนักงาน</span>
-        <span>💰 ยอดสั่งเพิ่ม 72% เมื่อสั่งผ่าน Kiosk</span>
       </div>
     </div>
   );
@@ -98,114 +92,136 @@ function WelcomeScreen({ onStart }: { onStart: (type: "dinein" | "takeaway") => 
 
 // ── Customize Modal ───────────────────────────────────────
 function CustomizeModal({
-  item, onClose, onAdd,
-}: { item: KioskItem; onClose: () => void; onAdd: (entry: Omit<CartEntry, "cartId">) => void }) {
-  const [spice, setSpice] = useState("ปกติ");
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  item, optionGroups, onClose, onAdd,
+}: {
+  item: KioskMenuItem;
+  optionGroups: OptionGroup[];
+  onClose: () => void;
+  onAdd: (entry: Omit<CartEntry, "cartId">) => void;
+}) {
+  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+    const init: Record<string, string[]> = {};
+    optionGroups.forEach(g => {
+      const defaults = g.menu_options.filter(o => o.is_default).map(o => o.name);
+      if (defaults.length > 0) init[g.id] = defaults;
+      else if (g.type === 'single' && g.menu_options.length > 0) init[g.id] = [g.menu_options[0].name];
+    });
+    return init;
+  });
   const [note, setNote] = useState("");
+  const [qty, setQty] = useState(1);
 
-  const addonTotal = ADDONS.filter(a => selectedAddons.includes(a.name)).reduce((s, a) => s + a.price, 0);
-  const total = item.price + addonTotal;
+  const selectedOptions: { group: string; name: string; price_add: number }[] = [];
+  let priceAdd = 0;
+  optionGroups.forEach(g => {
+    (selections[g.id] || []).forEach(optName => {
+      const opt = g.menu_options.find(o => o.name === optName);
+      if (opt) {
+        selectedOptions.push({ group: g.name, name: opt.name, price_add: Number(opt.price_add) });
+        priceAdd += Number(opt.price_add);
+      }
+    });
+  });
 
-  const toggleAddon = (name: string) =>
-    setSelectedAddons(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
+  const total = (item.price + priceAdd) * qty;
+  const optionsText = selectedOptions.map(o => o.price_add > 0 ? `${o.name} +฿${o.price_add}` : o.name).join(', ');
+
+  const toggleOption = (groupId: string, optName: string, type: string) => {
+    setSelections(prev => {
+      const current = prev[groupId] || [];
+      if (type === 'single') return { ...prev, [groupId]: [optName] };
+      return { ...prev, [groupId]: current.includes(optName) ? current.filter(n => n !== optName) : [...current, optName] };
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-3xl w-full max-w-2xl shadow-[0_24px_60px_rgba(0,0,0,0.15)] overflow-hidden">
-        {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-xl border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-[18px]">
-            ←
-          </button>
+          <button onClick={onClose} className="w-9 h-9 rounded-xl border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-[18px]">←</button>
           <div className="text-[17px] font-bold text-foreground">ปรับแต่ง: {item.name}</div>
         </div>
 
         <div className="flex gap-0 max-h-[70vh] overflow-hidden">
-          {/* Left: item card */}
           <div className="w-52 shrink-0 p-6 border-r border-border flex flex-col items-center text-center bg-background/50">
             <div className="text-[64px] leading-none mb-3">{item.img}</div>
             <div className="text-[15px] font-extrabold text-foreground mb-1">{item.name}</div>
             <div className="text-[12px] text-muted-foreground mb-3">{item.desc}</div>
             <div className="flex flex-wrap gap-1 justify-center mb-3">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>
+              {item.cal && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>}
               {item.allergens.map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">⚠️ {a}</span>
               ))}
             </div>
             <div className="font-mono text-[24px] font-extrabold text-primary">฿{total}</div>
-            {addonTotal > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{addonTotal}</div>}
+            {priceAdd > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{priceAdd}</div>}
           </div>
 
-          {/* Right: options */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Spice level */}
-            <div className="bg-background rounded-2xl p-4 border border-border">
-              <div className="text-[13px] font-bold text-foreground mb-3">🌶️ ระดับความเผ็ด</div>
-              <div className="flex gap-2">
-                {SPICE_LEVELS.map((lv, i) => (
-                  <button key={lv} onClick={() => setSpice(lv)}
-                    className={cn(
-                      "flex-1 py-2.5 px-1 rounded-xl border-2 text-[11px] font-semibold transition-all",
-                      spice === lv
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-muted-foreground hover:border-border-light"
-                    )}>
-                    <div>{i === 0 ? "—" : "🌶️".repeat(i)}</div>
-                    <div className="mt-0.5">{lv}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Add-ons */}
-            <div className="bg-background rounded-2xl p-4 border border-border">
-              <div className="text-[13px] font-bold text-foreground mb-3">➕ เพิ่มเติม</div>
-              <div className="space-y-2">
-                {ADDONS.map(addon => {
-                  const on = selectedAddons.includes(addon.name);
-                  return (
-                    <div key={addon.name}
-                      onClick={() => toggleAddon(addon.name)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all",
-                        on ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border-light"
-                      )}>
-                      <span className="text-[22px]">{addon.img}</span>
-                      <span className="flex-1 text-[13px] font-semibold text-foreground">{addon.name}</span>
-                      <span className="font-mono text-[13px] font-bold text-accent">+฿{addon.price}</span>
-                      <div className={cn(
-                        "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
-                        on ? "border-primary bg-primary" : "border-border bg-background"
-                      )}>
-                        {on && <span className="text-white text-[10px] font-black">✓</span>}
+            {optionGroups.map(group => (
+              <div key={group.id} className="bg-background rounded-2xl p-4 border border-border">
+                <div className="text-[13px] font-bold text-foreground mb-3 flex items-center gap-2">
+                  {group.name}
+                  {group.required && <span className="text-[10px] text-danger font-bold">* จำเป็น</span>}
+                  <span className="text-[10px] text-muted-foreground">{group.type === 'single' ? '(เลือก 1)' : '(เลือกได้หลายอย่าง)'}</span>
+                </div>
+                <div className={group.type === 'single' ? "flex gap-2 flex-wrap" : "space-y-2"}>
+                  {group.menu_options.map(opt => {
+                    const on = (selections[group.id] || []).includes(opt.name);
+                    if (group.type === 'single') {
+                      return (
+                        <button key={opt.id} onClick={() => toggleOption(group.id, opt.name, group.type)}
+                          className={cn(
+                            "flex-1 min-w-[80px] py-2.5 px-2 rounded-xl border-2 text-[12px] font-semibold transition-all min-h-[48px]",
+                            on ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:border-border"
+                          )}>
+                          {opt.name}
+                          {Number(opt.price_add) > 0 && <div className="text-[10px] text-accent mt-0.5">+฿{opt.price_add}</div>}
+                        </button>
+                      );
+                    }
+                    return (
+                      <div key={opt.id} onClick={() => toggleOption(group.id, opt.name, group.type)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all min-h-[48px]",
+                          on ? "border-primary/50 bg-primary/5" : "border-border bg-card hover:border-border"
+                        )}>
+                        <span className="flex-1 text-[13px] font-semibold text-foreground">{opt.name}</span>
+                        {Number(opt.price_add) > 0 && <span className="font-mono text-[13px] font-bold text-accent">+฿{opt.price_add}</span>}
+                        <div className={cn("w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                          on ? "border-primary bg-primary" : "border-border bg-background")}>
+                          {on && <span className="text-white text-[10px] font-black">✓</span>}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ))}
 
-            {/* Special note */}
             <div className="bg-background rounded-2xl p-4 border border-border">
               <div className="text-[13px] font-bold text-foreground mb-2">📝 หมายเหตุพิเศษ</div>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
+              <textarea value={note} onChange={e => setNote(e.target.value)}
                 placeholder='เช่น "ไม่ใส่ผักชี" หรือ "เพิ่มน้ำจิ้ม"...'
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-[13px] text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-                rows={2}
-              />
+                rows={2} />
+            </div>
+
+            <div className="bg-background rounded-2xl p-4 border border-border flex items-center justify-center gap-4">
+              <button onClick={() => setQty(q => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-xl border border-border bg-card text-foreground text-[18px] font-bold flex items-center justify-center hover:bg-muted transition-colors">−</button>
+              <span className="font-mono text-[24px] font-black tabular-nums w-8 text-center">{qty}</span>
+              <button onClick={() => setQty(q => q + 1)}
+                className="w-10 h-10 rounded-xl gradient-primary text-white text-[18px] font-bold flex items-center justify-center">+</button>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-border">
-          <button
-            onClick={() => { onAdd({ ...item, qty: 1, spice, addons: selectedAddons, note }); onClose(); }}
-            className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
+          <button onClick={() => {
+            onAdd({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty, note, options: selectedOptions, optionsText, priceAdd });
+            onClose();
+          }} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
             เพิ่มลงตะกร้า — ฿{total}
           </button>
         </div>
@@ -215,16 +231,21 @@ function CustomizeModal({
 }
 
 // ── Menu Screen ───────────────────────────────────────────
-function MenuScreen({ cart, setCart, orderType, onCheckout }: {
-  cart: CartEntry[]; setCart: React.Dispatch<React.SetStateAction<CartEntry[]>>;
-  orderType: string; onCheckout: () => void;
+function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categories, optionGroups, allergensList }: {
+  cart: CartEntry[];
+  setCart: React.Dispatch<React.SetStateAction<CartEntry[]>>;
+  orderType: string;
+  onCheckout: () => void;
+  menuItems: KioskMenuItem[];
+  categories: string[];
+  optionGroups: Record<string, OptionGroup[]>;
+  allergensList: string[];
 }) {
   const [activeCat, setActiveCat] = useState("ทั้งหมด");
   const [allergenFilter, setAllergenFilter] = useState<string[]>([]);
-  const [customizing, setCustomizing] = useState<KioskItem | null>(null);
-  const [upsell, setUpsell] = useState<{ rule: typeof UPSELL_RULES[number]; suggestions: typeof KIOSK_MENU } | null>(null);
+  const [customizing, setCustomizing] = useState<KioskMenuItem | null>(null);
 
-  const filtered = KIOSK_MENU.filter(m => {
+  const filtered = menuItems.filter(m => {
     if (activeCat === "⭐ ยอดนิยม") return m.popular;
     if (activeCat !== "ทั้งหมด" && m.cat !== activeCat) return false;
     if (allergenFilter.length > 0 && m.allergens.some(a => allergenFilter.includes(a))) return false;
@@ -233,22 +254,25 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
 
   const addToCart = (entry: Omit<CartEntry, "cartId">) => {
     setCart(prev => [...prev, { ...entry, cartId: Date.now() + Math.random() }]);
-    const rule = UPSELL_RULES.find(r => r.trigger === entry.cat && !cart.some(c => c.cat === r.suggest));
-    if (rule) {
-      const suggestions = KIOSK_MENU.filter(m => m.cat === rule.suggest).slice(0, 3);
-      setUpsell({ rule, suggestions });
+  };
+
+  const handleItemClick = (item: KioskMenuItem) => {
+    const groups = optionGroups[item.id];
+    if (groups && groups.length > 0) {
+      setCustomizing(item);
+    } else {
+      addToCart({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty: 1, note: '', options: [], optionsText: '', priceAdd: 0 });
     }
   };
 
   const removeItem = (cartId: number) => setCart(prev => prev.filter(c => c.cartId !== cartId));
   const incItem = (cartId: number) => setCart(prev => prev.map(c => c.cartId === cartId ? { ...c, qty: c.qty + 1 } : c));
 
-  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const total = cart.reduce((s, c) => s + (c.price + c.priceAdd) * c.qty, 0);
   const totalItems = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* top bar */}
       <div className="px-5 py-3 border-b border-border bg-card flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -259,17 +283,14 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
           </span>
           <span className="text-[14px] font-bold text-foreground">เลือกเมนู</span>
         </div>
-        {/* Allergen filter */}
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground">กรองสารก่อภูมิแพ้:</span>
-          {ALL_ALLERGENS.map(a => {
+          {allergensList.map(a => {
             const on = allergenFilter.includes(a);
             return (
               <button key={a} onClick={() => setAllergenFilter(prev => on ? prev.filter(x => x !== a) : [...prev, a])}
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors",
-                  on ? "border-danger/50 bg-danger/10 text-danger" : "border-border bg-background text-muted-foreground hover:border-border-light"
-                )}>
+                className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors",
+                  on ? "border-danger/50 bg-danger/10 text-danger" : "border-border bg-background text-muted-foreground hover:border-border")}>
                 {on ? "🚫 " : ""}{a}
               </button>
             );
@@ -278,20 +299,16 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Category sidebar */}
         <div className="w-[120px] shrink-0 bg-card border-r border-border p-2 flex flex-col gap-1 overflow-y-auto">
-          {CATS.map(c => (
+          {categories.map(c => (
             <button key={c} onClick={() => setActiveCat(c)}
-              className={cn(
-                "px-2 py-2.5 rounded-xl text-[12px] font-semibold text-left transition-all",
-                activeCat === c ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-background"
-              )}>
+              className={cn("px-2 py-2.5 rounded-xl text-[12px] font-semibold text-left transition-all",
+                activeCat === c ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
               {c}
             </button>
           ))}
         </div>
 
-        {/* Grid */}
         <div className="flex-1 overflow-y-auto p-4">
           {allergenFilter.length > 0 && (
             <div className="px-3 py-2 rounded-xl bg-danger/5 border border-danger/20 text-[12px] text-danger font-semibold mb-3">
@@ -302,15 +319,13 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
             {filtered.map(item => {
               const inCart = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
               return (
-                <div key={item.id} onClick={() => setCustomizing(item)}
+                <div key={item.id} onClick={() => handleItemClick(item)}
                   className={cn(
                     "relative bg-card border-2 rounded-2xl p-3.5 cursor-pointer transition-all hover:shadow-card-hover",
-                    inCart > 0 ? "border-primary shadow-primary/20 shadow-md" : "border-border shadow-card hover:border-border-light"
+                    inCart > 0 ? "border-primary shadow-primary/20 shadow-md" : "border-border shadow-card hover:border-border"
                   )}>
                   {inCart > 0 && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[12px] font-extrabold flex items-center justify-center shadow-primary">
-                      {inCart}
-                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[12px] font-extrabold flex items-center justify-center shadow-primary">{inCart}</div>
                   )}
                   {item.popular && (
                     <div className="absolute top-2 left-2">
@@ -320,7 +335,7 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
                   <div className="text-center mt-3">
                     <div className="text-[44px] leading-none mb-2">{item.img}</div>
                     <div className="text-[13px] font-bold text-foreground leading-tight mb-1">{item.name}</div>
-                    <div className="text-[10px] text-muted-foreground mb-2">{item.cal} cal</div>
+                    {item.cal && <div className="text-[10px] text-muted-foreground mb-2">{item.cal} cal</div>}
                     <div className="font-mono text-[17px] font-extrabold text-primary">฿{item.price}</div>
                   </div>
                 </div>
@@ -329,71 +344,35 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
           </div>
         </div>
 
-        {/* Cart sidebar */}
         <div className="w-[280px] shrink-0 border-l border-border bg-card flex flex-col">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
             <span className="text-[14px] font-extrabold text-foreground">🛒 ตะกร้า</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
-              {totalItems} ชิ้น
-            </span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">{totalItems} ชิ้น</span>
           </div>
-
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pb-8">
                 <div className="text-[36px] mb-2">🛒</div>
                 <div className="text-[13px]">แตะเมนูเพื่อเริ่มสั่ง</div>
               </div>
-            ) : cart.map((item) => (
+            ) : cart.map(item => (
               <div key={item.cartId} className="flex items-center gap-2 px-2 py-2 rounded-xl border border-border bg-background">
                 <span className="text-[22px]">{item.img}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-semibold text-foreground truncate">{item.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{item.spice}</div>
+                  {item.optionsText && <div className="text-[10px] text-muted-foreground truncate">{item.optionsText}</div>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => removeItem(item.cartId)}
-                    className="w-5 h-5 rounded-md border border-border bg-card text-muted-foreground text-[13px] flex items-center justify-center hover:text-danger transition-colors">
-                    −
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); removeItem(item.cartId); }}
+                    className="w-5 h-5 rounded-md border border-border bg-card text-muted-foreground text-[13px] flex items-center justify-center hover:text-danger transition-colors">−</button>
                   <span className="font-mono text-[12px] font-bold w-4 text-center tabular-nums">{item.qty}</span>
-                  <button onClick={() => incItem(item.cartId)}
-                    className="w-5 h-5 rounded-md gradient-primary text-white text-[13px] flex items-center justify-center">
-                    +
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); incItem(item.cartId); }}
+                    className="w-5 h-5 rounded-md gradient-primary text-white text-[13px] flex items-center justify-center">+</button>
                 </div>
-                <span className="font-mono text-[12px] font-bold text-primary w-10 text-right shrink-0 tabular-nums">฿{item.price * item.qty}</span>
+                <span className="font-mono text-[12px] font-bold text-primary w-12 text-right shrink-0 tabular-nums">฿{(item.price + item.priceAdd) * item.qty}</span>
               </div>
             ))}
           </div>
-
-          {/* Upsell */}
-          {upsell && (
-            <div className="mx-3 mb-2 p-3 rounded-2xl bg-warning/5 border border-warning/20">
-              <div className="text-[12px] font-bold text-warning mb-2 flex items-center gap-1.5">
-                {upsell.rule.msg}
-                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-danger/10 text-danger border border-danger/20">
-                  ลด {upsell.rule.discount}%
-                </span>
-              </div>
-              <div className="flex gap-1.5">
-                {upsell.suggestions.map(s => (
-                  <button key={s.id} onClick={() => { addToCart({ ...s, qty: 1, spice: "ปกติ", addons: [], note: "" }); setUpsell(null); }}
-                    className="flex-1 px-1 py-2 rounded-xl border border-border bg-card text-center hover:border-primary/40 transition-colors">
-                    <div className="text-[20px]">{s.img}</div>
-                    <div className="text-[9px] font-semibold text-foreground mt-0.5">{s.name}</div>
-                    <div className="font-mono text-[10px] font-bold text-success">฿{Math.round(s.price * (1 - upsell.rule.discount / 100))}</div>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setUpsell(null)}
-                className="w-full mt-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-                ไม่เพิ่ม ขอบคุณ
-              </button>
-            </div>
-          )}
-
-          {/* Total */}
           <div className="px-4 py-3 border-t border-border shrink-0">
             <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
               <span>รวม {totalItems} ชิ้น</span>
@@ -403,9 +382,7 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
               <span className="text-[15px] font-extrabold text-foreground">ยอดรวม</span>
               <span className="font-mono text-[22px] font-black text-primary tabular-nums">฿{total.toLocaleString()}</span>
             </div>
-            <button
-              onClick={onCheckout}
-              disabled={cart.length === 0}
+            <button onClick={onCheckout} disabled={cart.length === 0}
               className="w-full py-3 rounded-2xl text-[14px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
               ยืนยันออเดอร์ →
             </button>
@@ -413,12 +390,12 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
         </div>
       </div>
 
-      {/* Customize modal */}
       {customizing && (
         <CustomizeModal
           item={customizing}
+          optionGroups={optionGroups[customizing.id] || []}
           onClose={() => setCustomizing(null)}
-          onAdd={(entry) => addToCart(entry)}
+          onAdd={entry => addToCart(entry)}
         />
       )}
     </div>
@@ -428,7 +405,6 @@ function MenuScreen({ cart, setCart, orderType, onCheckout }: {
 // ── Payment Screen ────────────────────────────────────────
 function KioskPaymentScreen({ total, onPay }: { total: number; onPay: () => void }) {
   const [method, setMethod] = useState<string | null>(null);
-
   const METHODS = [
     { id: "qr",   label: "QR PromptPay",            icon: "📱", desc: "สแกนจ่ายด้วยแอปธนาคาร",         color: "primary" },
     { id: "card", label: "บัตรเครดิต/เดบิต",         icon: "💳", desc: "Visa, Mastercard, JCB",         color: "accent"  },
@@ -442,7 +418,6 @@ function KioskPaymentScreen({ total, onPay }: { total: number; onPay: () => void
         <div className="text-[20px] font-extrabold text-foreground mb-4">💳 เลือกวิธีชำระเงิน</div>
         <div className="font-mono text-[42px] font-black text-primary tabular-nums mb-1">฿{total.toLocaleString()}</div>
         <div className="text-[13px] text-muted-foreground mb-6">รวม VAT 7% แล้ว</div>
-
         <div className="flex flex-col gap-2.5 mb-6">
           {METHODS.map(m => (
             <button key={m.id} onClick={() => setMethod(m.id)}
@@ -450,33 +425,23 @@ function KioskPaymentScreen({ total, onPay }: { total: number; onPay: () => void
                 "flex items-center gap-4 px-4 py-3.5 rounded-2xl border-2 text-left transition-all",
                 method === m.id
                   ? m.color === "primary" ? "border-primary bg-primary/5" : m.color === "accent" ? "border-accent bg-accent/5" : "border-success bg-success/5"
-                  : "border-border bg-background hover:border-border-light"
+                  : "border-border bg-background hover:border-border"
               )}>
               <span className="text-[26px]">{m.icon}</span>
               <div className="flex-1">
-                <div className={cn(
-                  "text-[14px] font-bold",
+                <div className={cn("text-[14px] font-bold",
                   method === m.id ? (m.color === "primary" ? "text-primary" : m.color === "accent" ? "text-accent" : "text-success") : "text-foreground"
                 )}>{m.label}</div>
                 <div className="text-[12px] text-muted-foreground">{m.desc}</div>
               </div>
-              <div className={cn(
-                "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                method === m.id
-                  ? m.color === "primary" ? "border-primary" : m.color === "accent" ? "border-accent" : "border-success"
-                  : "border-border"
-              )}>
-                {method === m.id && (
-                  <div className={cn(
-                    "w-2.5 h-2.5 rounded-full",
-                    m.color === "primary" ? "bg-primary" : m.color === "accent" ? "bg-accent" : "bg-success"
-                  )} />
-                )}
+              <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                method === m.id ? m.color === "primary" ? "border-primary" : m.color === "accent" ? "border-accent" : "border-success" : "border-border")}>
+                {method === m.id && <div className={cn("w-2.5 h-2.5 rounded-full",
+                  m.color === "primary" ? "bg-primary" : m.color === "accent" ? "bg-accent" : "bg-success")} />}
               </div>
             </button>
           ))}
         </div>
-
         {method === "qr" && (
           <div className="mb-5">
             <div className="w-44 h-44 mx-auto rounded-2xl bg-white border-2 border-border p-3 flex items-center justify-center">
@@ -486,10 +451,7 @@ function KioskPaymentScreen({ total, onPay }: { total: number; onPay: () => void
             <div className="text-[11px] text-muted-foreground mt-2">สแกน QR ด้านบนด้วยแอปธนาคาร</div>
           </div>
         )}
-
-        <button
-          onClick={onPay}
-          disabled={!method}
+        <button onClick={onPay} disabled={!method}
           className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
           {method === "cash" ? "📄 พิมพ์ใบเสร็จไปจ่าย" : "✅ ยืนยันชำระเงิน"}
         </button>
@@ -500,6 +462,13 @@ function KioskPaymentScreen({ total, onPay }: { total: number; onPay: () => void
 
 // ── Done Screen ───────────────────────────────────────────
 function DoneScreen({ orderNumber, onReset }: { orderNumber: string; onReset: () => void }) {
+  const timerRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    timerRef.current = setTimeout(onReset, 15000);
+    return () => clearTimeout(timerRef.current);
+  }, [onReset]);
+
   const steps = [
     { label: "รับออเดอร์แล้ว",      icon: "✅", done: true  },
     { label: "กำลังเตรียมอาหาร",   icon: "👨‍🍳", done: false },
@@ -513,17 +482,13 @@ function DoneScreen({ orderNumber, onReset }: { orderNumber: string; onReset: ()
         <div className="text-[72px] leading-none mb-4">✅</div>
         <h2 className="text-[28px] font-black text-success mb-2">สั่งอาหารสำเร็จ!</h2>
         <div className="text-[15px] text-foreground mb-1">หมายเลขออเดอร์</div>
-        <div className="font-mono text-[48px] font-black text-primary mb-6 tabular-nums tracking-widest">#{orderNumber}</div>
-
-        {/* Progress tracker */}
+        <div className="font-mono text-[48px] font-black text-primary mb-6 tabular-nums tracking-widest">{orderNumber}</div>
         <div className="bg-card border border-border rounded-2xl p-5 shadow-card mb-5 text-left">
           <div className="text-[13px] font-bold text-foreground mb-3">📍 สถานะออเดอร์</div>
           {steps.map((s, i) => (
             <div key={i} className="flex items-center gap-3 py-2.5">
-              <div className={cn(
-                "w-9 h-9 rounded-full flex items-center justify-center text-[15px] border-2 transition-all",
-                s.done ? "border-success bg-success/10 text-success" : "border-border bg-background text-muted-foreground"
-              )}>
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-[15px] border-2 transition-all",
+                s.done ? "border-success bg-success/10 text-success" : "border-border bg-background text-muted-foreground")}>
                 {s.done ? "✓" : s.icon}
               </div>
               <span className={cn("text-[13px] flex-1", s.done ? "font-bold text-foreground" : "text-muted-foreground")}>{s.label}</span>
@@ -533,9 +498,7 @@ function DoneScreen({ orderNumber, onReset }: { orderNumber: string; onReset: ()
             </div>
           ))}
         </div>
-
-        <div className="text-[12px] text-muted-foreground mb-5">📱 สแกน QR เพื่อติดตามสถานะผ่าน LINE</div>
-
+        <div className="text-[12px] text-muted-foreground mb-5">กลับหน้าหลักอัตโนมัติใน 15 วินาที</div>
         <button onClick={onReset}
           className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
           🏠 กลับหน้าหลัก
@@ -546,49 +509,150 @@ function DoneScreen({ orderNumber, onReset }: { orderNumber: string; onReset: ()
 }
 
 // ── Main Kiosk Screen ─────────────────────────────────────
-export function KioskScreen() {
+export function KioskScreen({ tableId, tableLabel, isPublic }: KioskScreenProps) {
   const [step, setStep] = useState(STEPS.WELCOME);
   const [orderType, setOrderType] = useState<"dinein" | "takeaway">("dinein");
   const [cart, setCart] = useState<CartEntry[]>([]);
+  const [orderNumber, setOrderNumber] = useState("");
 
-  const orderNumber = String(251 + Math.floor(Math.random() * 10)).padStart(4, "0");
-  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  // DB data
+  const [menuItems, setMenuItems] = useState<KioskMenuItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [optionGroups, setOptionGroups] = useState<Record<string, OptionGroup[]>>({});
+  const [allergensList, setAllergensList] = useState<string[]>([]);
 
-  const reset = () => { setStep(STEPS.WELCOME); setCart([]); };
+  useEffect(() => { fetchKioskData(); }, []);
+
+  async function fetchKioskData() {
+    const { data: menu } = await supabase
+      .from('menu_items')
+      .select('*, menu_categories(name, icon)')
+      .eq('is_available', true)
+      .order('sort_order');
+
+    if (menu) {
+      setMenuItems(menu.map((m: any) => ({
+        id: m.id, name: m.name, price: Number(m.price),
+        cat: (m.menu_categories as any)?.name || '', img: m.emoji || '🍽',
+        cal: m.calories, popular: m.is_popular || false,
+        allergens: m.allergens || [], desc: m.description || '',
+      })));
+
+      const allAllergens = new Set<string>();
+      menu.forEach((m: any) => (m.allergens || []).forEach((a: string) => allAllergens.add(a)));
+      setAllergensList(Array.from(allAllergens));
+
+      const cats = new Set<string>();
+      menu.forEach((m: any) => { if ((m.menu_categories as any)?.name) cats.add((m.menu_categories as any).name); });
+      setCategories(["ทั้งหมด", "⭐ ยอดนิยม", ...Array.from(cats)]);
+    }
+
+    const { data: groups } = await supabase
+      .from('menu_option_groups')
+      .select('*, menu_options(*)')
+      .order('sort_order');
+
+    if (groups) {
+      const grouped: Record<string, OptionGroup[]> = {};
+      groups.forEach((g: any) => {
+        const key = g.menu_item_id;
+        if (!key) return;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({
+          id: g.id, name: g.name, type: g.type || 'single', required: g.required || false,
+          menu_options: (g.menu_options || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+        });
+      });
+      setOptionGroups(grouped);
+    }
+  }
+
+  const total = cart.reduce((s, c) => s + (c.price + c.priceAdd) * c.qty, 0);
+
+  async function submitKioskOrder() {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert({
+        order_number: 'temp',
+        table_id: tableId || null,
+        order_type: (orderType === 'dinein' ? 'dine_in' : 'takeaway') as any,
+        channel: 'kiosk' as any,
+        status: 'sent' as any,
+        guest_count: 1,
+      })
+      .select()
+      .single();
+
+    if (error || !order) { console.error('Kiosk order error:', error); return; }
+
+    const items = cart.map(c => ({
+      order_id: order.id,
+      menu_item_id: c.id,
+      name: c.name,
+      price: c.price + c.priceAdd,
+      qty: c.qty,
+      note: c.note || null,
+      options: c.options || [],
+      options_text: c.optionsText || null,
+      price_add: c.priceAdd || 0,
+      status: 'sent' as any,
+      sent_at: new Date().toISOString(),
+    }));
+
+    await supabase.from('order_items').insert(items);
+
+    setOrderNumber(order.order_number);
+    setStep(STEPS.DONE);
+  }
+
+  const reset = () => { setStep(STEPS.WELCOME); setCart([]); setOrderNumber(''); };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background text-foreground">
+    <div className={cn("flex-1 flex flex-col overflow-hidden bg-background text-foreground", isPublic && "h-screen")}>
       {/* Kiosk top bar */}
-      <div className="px-5 py-2.5 bg-card border-b border-border flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
-          <img src="/src/assets/phimm-logo.png" alt="Phimm Cafe" className="w-8 h-8 object-contain" />
-          <span className="text-[15px] font-extrabold text-gradient-primary">Phimm Cafe</span>
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">Self-Service</span>
+      {!isPublic && (
+        <div className="px-5 py-2.5 bg-card border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <img src={phimmLogo} alt="Phimm Cafe" className="w-8 h-8 object-contain" />
+            <span className="text-[15px] font-extrabold text-gradient-primary">Phimm Cafe</span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">Self-Service</span>
+          </div>
+          <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
+            <span>☕ Phimm Cafe</span>
+            {step !== STEPS.WELCOME && (
+              <button onClick={reset} className="px-3 py-1 rounded-lg text-[11px] font-semibold border border-danger/30 bg-danger/5 text-danger hover:bg-danger/10 transition-colors">
+                ✕ ยกเลิก
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
-          <span>☕ Phimm Cafe</span>
+      )}
+
+      {isPublic && (
+        <div className="px-5 py-2.5 bg-card border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <img src={phimmLogo} alt="Phimm Cafe" className="w-8 h-8 object-contain" />
+            <span className="text-[15px] font-extrabold text-gradient-primary">Phimm Cafe</span>
+            {tableLabel && <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">📍 {tableLabel}</span>}
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">QR Order</span>
+          </div>
           {step !== STEPS.WELCOME && (
-            <button onClick={reset}
-              className="px-3 py-1 rounded-lg text-[11px] font-semibold border border-danger/30 bg-danger/5 text-danger hover:bg-danger/10 transition-colors">
+            <button onClick={reset} className="px-3 py-1 rounded-lg text-[11px] font-semibold border border-danger/30 bg-danger/5 text-danger hover:bg-danger/10 transition-colors">
               ✕ ยกเลิก
             </button>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Content */}
-      {step === STEPS.WELCOME && (
-        <WelcomeScreen onStart={(type) => { setOrderType(type); setStep(STEPS.MENU); }} />
-      )}
+      {step === STEPS.WELCOME && <WelcomeScreen tableLabel={tableLabel} onStart={(type) => { setOrderType(tableId ? "dinein" : type); setStep(STEPS.MENU); }} />}
       {step === STEPS.MENU && (
-        <MenuScreen cart={cart} setCart={setCart} orderType={orderType} onCheckout={() => setStep(STEPS.PAYMENT)} />
+        <MenuScreen cart={cart} setCart={setCart} orderType={orderType}
+          onCheckout={() => setStep(STEPS.PAYMENT)}
+          menuItems={menuItems} categories={categories}
+          optionGroups={optionGroups} allergensList={allergensList} />
       )}
-      {step === STEPS.PAYMENT && (
-        <KioskPaymentScreen total={total} onPay={() => setStep(STEPS.DONE)} />
-      )}
-      {step === STEPS.DONE && (
-        <DoneScreen orderNumber={orderNumber} onReset={reset} />
-      )}
+      {step === STEPS.PAYMENT && <KioskPaymentScreen total={total} onPay={submitKioskOrder} />}
+      {step === STEPS.DONE && <DoneScreen orderNumber={orderNumber} onReset={reset} />}
     </div>
   );
 }
