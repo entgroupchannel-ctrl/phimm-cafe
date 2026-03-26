@@ -31,7 +31,7 @@ const SERVED_ITEMS = [
   { id: 106, name: "ยำวุ้นเส้นทะเล",      nameEn: "Seafood Glass Noodle Salad",price: 220, qty: 1, status: "served" },
 ];
 
-export function OrderScreen({ cart, setCart, onPay, tableLabel = "3" }: OrderScreenProps) {
+export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3" }: OrderScreenProps) {
   const [activeCat, setActiveCat] = useState("ทั้งหมด");
   const [search, setSearch]       = useState("");
 
