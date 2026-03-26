@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { menuItems, MenuItem } from "@/data/pos-data";
 import { cn } from "@/lib/utils";
-import { Search, Minus, Plus, Trash2, ChefHat, Receipt } from "lucide-react";
+import { Search, Minus, Plus, Trash2, ChefHat, Receipt, ChevronLeft } from "lucide-react";
 
 export type CartItem = MenuItem & { qty: number };
 
