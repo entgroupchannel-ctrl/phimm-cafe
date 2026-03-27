@@ -480,22 +480,40 @@ export function KDSScreen() {
   }
 
   async function bumpItem(itemId: string, currentStatus: string) {
-    if (currentStatus === "sent") {
-      await supabase.from("order_items").update({
-        status: "cooking" as any,
-        cooking_started_at: new Date().toISOString(),
-      }).eq("id", itemId);
-    } else if (currentStatus === "cooking") {
-      // Fetch cooking_started_at to calculate duration
-      const { data: item } = await supabase.from("order_items").select("cooking_started_at").eq("id", itemId).single();
-      const startedAt = item?.cooking_started_at ? new Date(item.cooking_started_at) : null;
-      const cookingSeconds = startedAt ? Math.round((Date.now() - startedAt.getTime()) / 1000) : null;
+    try {
+      if (currentStatus === "sent") {
+        const { error } = await supabase.from("order_items").update({
+          status: "cooking" as any,
+          cooking_started_at: new Date().toISOString(),
+        }).eq("id", itemId);
 
-      await supabase.from("order_items").update({
-        status: "ready" as any,
-        ready_at: new Date().toISOString(),
-        cooking_seconds: cookingSeconds,
-      }).eq("id", itemId);
+        if (error) {
+          console.error("KDS bump sent→cooking failed:", error.message);
+          toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
+          return;
+        }
+      } else if (currentStatus === "cooking") {
+        const { data: item } = await supabase.from("order_items").select("cooking_started_at").eq("id", itemId).single();
+        const startedAt = item?.cooking_started_at ? new Date(item.cooking_started_at) : null;
+        const cookingSeconds = startedAt ? Math.round((Date.now() - startedAt.getTime()) / 1000) : null;
+
+        const { error } = await supabase.from("order_items").update({
+          status: "ready" as any,
+          ready_at: new Date().toISOString(),
+          cooking_seconds: cookingSeconds,
+        }).eq("id", itemId);
+
+        if (error) {
+          console.error("KDS bump cooking→ready failed:", error.message);
+          toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
+          return;
+        }
+      }
+
+      console.log("KDS bump success:", itemId, currentStatus, "→", currentStatus === "sent" ? "cooking" : "ready");
+      fetchKDSOrders();
+    } catch (err) {
+      console.error("KDS bump exception:", err);
     }
   }
 
