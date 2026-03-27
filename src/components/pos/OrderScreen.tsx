@@ -266,6 +266,13 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
         }
         oid = order.id;
         setOrderId?.(oid);
+        // Link order to table
+        if (tableId) {
+          await supabase
+            .from('tables')
+            .update({ current_order_id: oid, status: 'occupied' })
+            .eq('id', tableId);
+        }
       }
 
       const items = cart.map(c => ({
