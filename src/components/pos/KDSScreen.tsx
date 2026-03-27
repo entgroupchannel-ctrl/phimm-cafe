@@ -389,26 +389,42 @@ export function KDSScreen() {
   }, [soundOn]);
 
   async function fetchKDSOrders() {
-    const { data, error } = await supabase
+    // Step 1: Fetch order items with status sent/cooking/ready
+    const { data: items, error: itemsErr } = await supabase
       .from("order_items")
-      .select(`
-        id, name, qty, note, status, station, sent_at, ready_at, options_text, cooking_started_at, cooking_seconds,
-        order_id,
-        orders!inner (
-          id, order_number, table_id, order_type, channel,
-          tables ( label )
-        )
-      `)
+      .select("id, name, qty, note, status, station, station_id, sent_at, ready_at, options_text, cooking_started_at, cooking_seconds, order_id")
       .in("status", ["sent", "cooking", "ready"])
       .order("sent_at", { ascending: true });
 
-    if (error || !data) return;
+    if (itemsErr || !items || items.length === 0) {
+      setOrders([]);
+      return;
+    }
 
+    // Step 2: Fetch related orders + table labels
+    const orderIds = [...new Set(items.map(i => i.order_id))];
+    const { data: ordersData, error: ordersErr } = await supabase
+      .from("orders")
+      .select("id, order_number, table_id, order_type, channel, tables(label)")
+      .in("id", orderIds);
+
+    if (ordersErr) {
+      console.error("Error fetching orders for KDS:", ordersErr.message);
+      setOrders([]);
+      return;
+    }
+
+    const orderMap: Record<string, any> = {};
+    (ordersData || []).forEach((o: any) => {
+      orderMap[o.id] = o;
+    });
+
+    // Step 3: Group items by order
     const grouped: Record<string, KDSOrder> = {};
-    (data as any[]).forEach((item: any) => {
+    items.forEach((item: any) => {
       const oid = item.order_id;
       if (!grouped[oid]) {
-        const ord = item.orders;
+        const ord = orderMap[oid];
         const tableLabel = ord?.tables?.label;
         const ch = ord?.channel;
         const isDelivery = ch && !["walk_in", "kiosk", "qr_order"].includes(ch);
@@ -427,15 +443,21 @@ export function KDSScreen() {
         id: item.id, name: item.name, qty: item.qty,
         station: item.station, stationId: item.station_id || null,
         note: item.note, status: item.status,
-        optionsText: item.options_text, cookingStartedAt: item.cooking_started_at,
+        optionsText: item.options_text,
+        cookingStartedAt: item.cooking_started_at,
         cookingSeconds: item.cooking_seconds,
       });
+
       if (item.status === "sent") grouped[oid].status = "new";
-      else if (item.status === "cooking" && grouped[oid].status !== "new") grouped[oid].status = "cooking";
+      else if (item.status === "cooking" && grouped[oid].status !== "new")
+        grouped[oid].status = "cooking";
     });
 
     const list = Object.values(grouped);
-    if (list.length > prevCountRef.current && prevCountRef.current > 0 && soundOn) playAlert();
+
+    if (list.length > prevCountRef.current && prevCountRef.current > 0 && soundOn)
+      playAlert();
+
     prevCountRef.current = list.length;
     setOrders(list);
   }
