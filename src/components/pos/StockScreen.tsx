@@ -26,8 +26,8 @@ interface Supplier {
 }
 interface StockLog {
   id: string; stock_item_id: string; change_qty: number;
-  reason: string; created_at: string; ref_order_id: string | null;
-  staff_id: string | null;
+  reason: string; movement_type: string | null; created_at: string;
+  ref_order_id: string | null; staff_id: string | null;
   stock_items: { name: string; unit: string } | null;
 }
 interface PO {
@@ -47,6 +47,13 @@ const REASON_LABELS: Record<string, { label: string; color: string }> = {
   manual_adjust: { label: "🔧 ปรับสต๊อก", color: "primary" },
   po_receive: { label: "📦 รับจาก PO", color: "success" },
   count_correct: { label: "📊 ตรวจนับ", color: "primary" },
+};
+const MOVEMENT_LABELS: Record<string, { label: string; color: string }> = {
+  usage: { label: "🍳 ใช้งาน", color: "warning" },
+  purchase: { label: "📦 ซื้อเข้า", color: "success" },
+  waste: { label: "🗑️ เสียหาย", color: "danger" },
+  count_correct: { label: "📊 ตรวจนับ", color: "primary" },
+  manual: { label: "🔧 ปรับเอง", color: "accent" },
 };
 
 // ─── Main Component ──────────────────────────────
