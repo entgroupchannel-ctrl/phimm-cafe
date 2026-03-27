@@ -68,6 +68,7 @@ const NAV_GROUPS = [
     label: "เครื่องมือ",
     items: [
       { key: "ai"        as Screen, icon: Bot,      label: "AI",       permission: "view_ai"         },
+      { key: "stock-ai"  as Screen, icon: Brain,    label: "AI สต๊อก", permission: "manage_stock"    },
       { key: "nutrition" as Screen, icon: Salad,     label: "โภชนา",   permission: "view_dashboard"  },
       { key: "settings"  as Screen, icon: Settings,  label: "ตั้งค่า",  permission: "manage_settings" },
     ],
