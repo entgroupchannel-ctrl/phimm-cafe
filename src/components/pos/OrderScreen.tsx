@@ -352,8 +352,72 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
   const extraPrice = getExtraPrice();
   const modalUnitPrice = customizeItem ? customizeItem.price + extraPrice : 0;
 
+  // ── Mobile cart overlay ──
+  const mobileCartOverlay = isMobile && mobileCartOpen && (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in slide-in-from-bottom duration-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-[hsl(var(--surface))]">
+        <span className="text-[15px] font-bold text-foreground">🛒 ตะกร้า · โต๊ะ {tableLabel}</span>
+        <button onClick={() => setMobileCartOpen(false)} className="w-8 h-8 rounded-xl flex items-center justify-center bg-muted text-muted-foreground"><X size={18} /></button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {servedItems.map(item => (
+          <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-foreground truncate">{item.emoji && <span className="mr-1">{item.emoji}</span>}{item.name}</div>
+              {item.optionsText && <div className="text-[10px] text-[hsl(38_92%_50%)] font-semibold mt-0.5 truncate">⚠️ {item.optionsText}</div>}
+            </div>
+            <span className={cn("shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-lg", statusStyle(item.status))}>{statusLabel(item.status)}</span>
+            <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
+            <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">฿{(item.price * item.qty).toLocaleString()}</div>
+          </div>
+        ))}
+        {cart.map((item, idx) => {
+          const key = item.cartUniqueId || `${item.id}-${idx}`;
+          return (
+            <div key={key} className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-[hsl(var(--primary)/0.03)]">
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-foreground truncate">{item.img} {item.name}</div>
+                {item.optionsText && <div className="text-[10px] text-[hsl(38_92%_50%)] font-semibold mt-0.5 truncate">⚠️ {item.optionsText}</div>}
+                <div className="text-[11px] text-muted-foreground">฿{item.price}{(item.priceAdd || 0) > 0 && ` +฿${item.priceAdd}`}</div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => removeFromCart(item.cartUniqueId, item.id)} className="w-7 h-7 flex items-center justify-center rounded-full border border-border bg-muted text-muted-foreground"><Minus size={12} /></button>
+                <span className="w-5 text-center font-mono font-bold text-[13px] tabular-nums">{item.qty}</span>
+                <button onClick={() => increaseCart(item.cartUniqueId, item.id)} className="w-7 h-7 flex items-center justify-center rounded-full bg-primary text-white"><Plus size={12} /></button>
+              </div>
+              <div className="font-mono font-bold text-[13px] tabular-nums text-foreground w-16 text-right shrink-0">฿{((item.price + (item.priceAdd || 0)) * item.qty).toLocaleString()}</div>
+              <button onClick={() => deleteFromCart(item.cartUniqueId, item.id)} className="text-muted-foreground/40 hover:text-[hsl(var(--danger))] shrink-0"><Trash2 size={13} /></button>
+            </div>
+          );
+        })}
+        {cart.length === 0 && servedItems.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground"><div className="text-4xl mb-3 opacity-20">🛒</div><div className="text-[12px]">ตะกร้าว่าง</div></div>
+        )}
+      </div>
+      <div className="px-4 pt-3 pb-4 border-t border-border/60 space-y-3 bg-[hsl(var(--surface))]">
+        <div className="flex justify-between items-baseline">
+          <span className="text-[12px] text-muted-foreground">ยอดรวม</span>
+          <span className="font-mono text-[22px] font-black tabular-nums text-foreground">฿{grandTotal.toLocaleString()}.00</span>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { sendToKitchen(); setMobileCartOpen(false); }} disabled={cart.length === 0 || sending}
+            className={cn("flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.98]",
+              cart.length === 0 ? "bg-muted text-muted-foreground border border-border" : "bg-[hsl(211_100%_50%/0.12)] text-primary border border-[hsl(211_100%_50%/0.25)]")}>
+            <ChefHat size={16} />{sending ? "กำลังส่ง..." : "ส่งครัว"}
+          </button>
+          <button onClick={() => { onPay?.(); setMobileCartOpen(false); }} disabled={servedItems.length === 0 && cart.length === 0}
+            className={cn("flex-1 h-12 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.98]",
+              servedItems.length === 0 && cart.length === 0 ? "bg-muted text-muted-foreground border border-border" : "bg-[hsl(38_92%_50%)] text-white shadow-[0_4px_16px_hsl(38_92%_50%/0.35)]")}>
+            <Receipt size={16} />เช็คบิล
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-1 overflow-hidden bg-background">
+    <div className={cn("flex flex-1 overflow-hidden bg-background", isMobile && "flex-col")}>
+      {mobileCartOverlay}
 
       {/* ─── LEFT: Menu panel ──────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -391,7 +455,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
               </div>
             </div>
           ) : (
-            <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
+            <div className="grid gap-2.5" style={{ gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(160px, 1fr))" }}>
               {filtered.map(item => {
                 const inCartQty = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
                 const ss = stockStatus[item.id];
