@@ -1,11 +1,20 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Loader2, Plus, Eye, EyeOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // ── Delivery chime (Web Audio API, no file needed) ────────
 function playDeliveryChime() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const notes = [659.25, 783.99, 987.77, 1318.51]; // E5 G5 B5 E6
+    const notes = [659.25, 783.99, 987.77, 1318.51];
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -20,940 +29,477 @@ function playDeliveryChime() {
       osc.start(t);
       osc.stop(t + 0.36);
     });
-  } catch {
-    // Silently ignore if audio is blocked
-  }
+  } catch { /* ignore */ }
 }
 
-// ── In-app toast notification ─────────────────────────────
-interface DeliveryToast {
-  id: string;
-  channel: ChannelKey;
-  orderId: string;
-  items: string[];
-  total: number;
-  driver: string;
-  eta: string;
+const CHANNEL_COLORS: Record<string, string> = {
+  line_man: "#06C755", grab: "#00B14F", robinhood: "#6B21A8",
+  shopee_food: "#EE4D2D", walk_in: "#818CF8", kiosk: "#0891B2", qr_order: "#D946EF",
+};
+const CHANNEL_ICONS: Record<string, string> = {
+  line_man: "💚", grab: "🟢", robinhood: "🟣", shopee_food: "🟠",
+};
+const DELIVERY_CHANNELS = ["line_man", "grab", "robinhood", "shopee_food"];
+
+type OmniTab = "orders" | "config" | "analytics";
+
+interface DeliveryOrder {
+  id: string; order_number: string; channel: string | null; status: string | null;
+  total: number | null; created_at: string | null; customer_phone: string | null;
+  driver_name: string | null; note: string | null;
+  order_items: { id: string; name: string; qty: number; price: number; status: string | null }[];
 }
 
-function DeliveryToastItem({
-  toast, onDismiss,
-}: { toast: DeliveryToast; onDismiss: (id: string) => void }) {
-  const ch = CHANNELS[toast.channel];
-  const [leaving, setLeaving] = useState(false);
-
-  const dismiss = useCallback(() => {
-    setLeaving(true);
-    setTimeout(() => onDismiss(toast.id), 280);
-  }, [toast.id, onDismiss]);
-
-  useEffect(() => {
-    const t = setTimeout(dismiss, 7000);
-    return () => clearTimeout(t);
-  }, [dismiss]);
-
-  return (
-    <div className={cn(
-      "w-[320px] bg-card border-2 rounded-2xl shadow-[0_8px_32px_hsl(var(--primary)/0.18)] overflow-hidden transition-all duration-300",
-      leaving ? "opacity-0 translate-x-8 scale-95" : "opacity-100 translate-x-0 scale-100"
-    )} style={{ borderColor: ch.hex + "70" }}>
-      {/* Progress bar */}
-      <div className="h-[3px] w-full" style={{ background: ch.hex + "30" }}>
-        <div className="h-full rounded-full animate-[shrink_7s_linear_forwards]" style={{ background: ch.hex }} />
-      </div>
-      <div className="p-3.5">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[20px] shrink-0 border"
-            style={{ background: ch.hex + "18", borderColor: ch.hex + "35" }}>
-            {ch.icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[12px] font-extrabold" style={{ color: ch.hex }}>
-                🛵 ออเดอร์ใหม่ — {ch.name}
-              </span>
-              <button onClick={dismiss} className="text-muted-foreground hover:text-foreground text-[14px] ml-2 shrink-0 leading-none">✕</button>
-            </div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="font-mono font-extrabold text-[15px] text-foreground">{toast.orderId}</span>
-              <span className="font-mono text-[13px] font-bold text-accent">฿{toast.total}</span>
-            </div>
-            <div className="text-[11px] text-muted-foreground truncate mb-1.5">{toast.items.join(", ")}</div>
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="text-muted-foreground">🚴 <strong className="text-foreground">{toast.driver}</strong></span>
-              <span className="text-muted-foreground">⏰ ETA <strong className="text-accent">{toast.eta}</strong></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface Platform {
+  id: string; name: string; icon: string | null; api_key: string | null;
+  webhook_secret: string | null; commission_pct: number | null; config: any;
+  is_active: boolean | null;
 }
-
-function DeliveryToastContainer({
-  toasts, onDismiss,
-}: { toasts: DeliveryToast[]; onDismiss: (id: string) => void }) {
-  if (toasts.length === 0) return null;
-  return (
-    <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
-      {toasts.map(t => (
-        <div key={t.id} className="pointer-events-auto">
-          <DeliveryToastItem toast={t} onDismiss={onDismiss} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Channel definitions ───────────────────────────────────
-const CHANNELS = {
-  dinein:    { name:"หน้าร้าน",  icon:"🪑", color:"primary", hex:"#818CF8", short:"Dine-in"   },
-  lineman:   { name:"LINE MAN",  icon:"💚", color:"success",  hex:"#06C755", short:"LINE MAN"  },
-  grab:      { name:"Grab Food", icon:"🟢", color:"success",  hex:"#00B14F", short:"Grab"      },
-  robinhood: { name:"Robinhood", icon:"🟣", color:"accent",   hex:"#6B21A8", short:"Robinhood" },
-  shopee:    { name:"ShopeeFood",icon:"🟠", color:"danger",   hex:"#EE4D2D", short:"Shopee"    },
-  kiosk:     { name:"Kiosk",     icon:"📱", color:"accent",   hex:"#0891B2", short:"Kiosk"     },
-  qrorder:   { name:"QR Order",  icon:"📲", color:"primary",  hex:"#D946EF", short:"QR"        },
-  phone:     { name:"โทรสั่ง",   icon:"📞", color:"warning",  hex:"#F59E0B", short:"Phone"     },
-} as const;
-type ChannelKey = keyof typeof CHANNELS;
-
-type OrderStatus = "new" | "cooking" | "ready" | "served";
-
-interface LiveOrder {
-  id: string; channel: ChannelKey; table: string;
-  items: string[]; total: number; time: number;
-  status: OrderStatus; driver?: string; eta?: string; note?: string;
-}
-
-const INITIAL_ORDERS: LiveOrder[] = [
-  { id:"#0258", channel:"lineman",   table:"D5", items:["ผัดไทย x2","ชาเย็น x2"],             total:248, time:0,   status:"new",     driver:"สมชาย", eta:"12 นาที"    },
-  { id:"#0257", channel:"dinein",    table:"T3", items:["ต้มยำกุ้ง x1","ข้าวสวย x1"],          total:174, time:45,  status:"cooking"                                    },
-  { id:"#0256", channel:"grab",      table:"D4", items:["ข้าวผัดกุ้ง x3","น้ำมะนาว x3"],       total:372, time:120, status:"cooking", driver:"วิชัย",  eta:"8 นาที"     },
-  { id:"#0255", channel:"kiosk",     table:"K2", items:["ข้าวมันไก่ x1","กาแฟเย็น x1"],        total:120, time:180, status:"ready"                                      },
-  { id:"#0254", channel:"shopee",    table:"D3", items:["แกงเขียวหวาน x2","ข้าว x2"],          total:218, time:240, status:"cooking", driver:"—",      eta:"รอไรเดอร์"  },
-  { id:"#0253", channel:"qrorder",   table:"T7", items:["ปีกไก่ทอด x1","เฟรนช์ฟรายส์ x1"],    total:138, time:60,  status:"new"                                        },
-  { id:"#0252", channel:"robinhood", table:"D2", items:["ข้าวเหนียวมะม่วง x2"],               total:178, time:300, status:"ready",   driver:"นภา",    eta:"3 นาที"     },
-  { id:"#0251", channel:"dinein",    table:"T1", items:["ส้มตำ x1","ผัดไทย x1","ชาเย็น x1"],   total:193, time:420, status:"served"                                     },
-  { id:"#0250", channel:"phone",     table:"P1", items:["ข้าวผัดกุ้ง x2","ต้มยำกุ้ง x1"],     total:337, time:30,  status:"new",     note:"มารับเอง 13:00"              },
-];
-
-const CHANNEL_DATA = [
-  { key:"dinein"    as ChannelKey, revenue:485200, orders:1247, avg:389, peak:"12:00-13:00", topMenu:"ผัดไทย",          retention:72, commission:0,  connected:true  },
-  { key:"lineman"   as ChannelKey, revenue:312800, orders:834,  avg:375, peak:"18:00-19:00", topMenu:"ข้าวผัดกุ้ง",    retention:45, commission:30, connected:true  },
-  { key:"grab"      as ChannelKey, revenue:198400, orders:521,  avg:381, peak:"12:00-13:00", topMenu:"ต้มยำกุ้ง",      retention:38, commission:30, connected:true  },
-  { key:"kiosk"     as ChannelKey, revenue:118400, orders:312,  avg:380, peak:"12:00-14:00", topMenu:"ข้าวมันไก่",     retention:65, commission:0,  connected:true  },
-  { key:"qrorder"   as ChannelKey, revenue:168200, orders:456,  avg:369, peak:"11:00-13:00", topMenu:"ส้มตำ",           retention:58, commission:0,  connected:true  },
-  { key:"robinhood" as ChannelKey, revenue:72800,  orders:189,  avg:385, peak:"19:00-20:00", topMenu:"แกงเขียวหวาน",   retention:42, commission:15, connected:true  },
-  { key:"phone"     as ChannelKey, revenue:38200,  orders:98,   avg:390, peak:"11:00-12:00", topMenu:"ข้าวผัดกุ้ง",   retention:80, commission:0,  connected:true  },
-  { key:"shopee"    as ChannelKey, revenue:0,       orders:0,    avg:0,   peak:"—",           topMenu:"—",               retention:0,  commission:25, connected:false, potential:120000 },
-];
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60);
-  return m < 1 ? "< 1 นาที" : `${m} นาที`;
-}
-
-// ── Simulated incoming delivery orders ────────────────────
-const INCOMING_POOL: Omit<LiveOrder, "id" | "time" | "status">[] = [
-  { channel:"lineman",   table:"D9",  items:["ผัดกะเพราหมู x2","ข้าวสวย x2"],        total:196, driver:"ธนัช",  eta:"14 นาที" },
-  { channel:"grab",      table:"D10", items:["ต้มยำกุ้ง x1","ข้าวผัด x1"],           total:234, driver:"สุริยา", eta:"10 นาที" },
-  { channel:"lineman",   table:"D11", items:["ส้มตำไทย x1","ไก่ย่าง x1","โคล่า x2"], total:318, driver:"วันชัย", eta:"18 นาที" },
-  { channel:"grab",      table:"D12", items:["ข้าวมันไก่ x2","น้ำเปล่า x2"],         total:210, driver:"ปิยะ",  eta:"7 นาที"  },
-  { channel:"lineman",   table:"D13", items:["แกงเขียวหวานไก่ x1","ข้าว x1"],        total:165, driver:"ณัฐ",   eta:"11 นาที" },
-  { channel:"grab",      table:"D14", items:["หมูกะทะ Set B x1"],                    total:399, driver:"อนุชา", eta:"22 นาที" },
-];
-let _orderCounter = 259;
-
-// ── Tab 1: Unified Order Hub ──────────────────────────────
-function OrderHubTab() {
-  const [filter, setFilter] = useState("all");
-  const [orders, setOrders] = useState<LiveOrder[]>(INITIAL_ORDERS);
-  const [toasts, setToasts] = useState<DeliveryToast[]>([]);
-  const orderCounterRef = useRef(_orderCounter);
-
-  // Tick timer
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setOrders(prev => prev.map(o =>
-        o.status !== "served" ? { ...o, time: o.time + 1 } : o
-      ));
-    }, 1000);
-    return () => clearInterval(iv);
-  }, []);
-
-  // Simulate new delivery order every 15 s
-  useEffect(() => {
-    const iv = setInterval(() => {
-      const pool = INCOMING_POOL;
-      const tpl = pool[Math.floor(Math.random() * pool.length)];
-      orderCounterRef.current += 1;
-      const newId = `#0${orderCounterRef.current}`;
-      const newOrder: LiveOrder = { ...tpl, id: newId, time: 0, status: "new" };
-      setOrders(prev => [newOrder, ...prev]);
-      const toastId = `toast-${Date.now()}`;
-      setToasts(prev => [...prev, {
-        id: toastId,
-        channel: tpl.channel,
-        orderId: newId,
-        items: tpl.items,
-        total: tpl.total,
-        driver: tpl.driver ?? "—",
-        eta: tpl.eta ?? "—",
-      }]);
-      playDeliveryChime();
-    }, 15000);
-    return () => clearInterval(iv);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  const active = orders.filter(o => o.status !== "served");
-  const delivery = (k: ChannelKey) => !["dinein","kiosk","qrorder"].includes(k);
-
-  const filtered = filter === "all" ? orders
-    : filter === "delivery" ? orders.filter(o => delivery(o.channel))
-    : orders.filter(o => o.channel === filter);
-
-  const channelCounts: Record<string, number> = {};
-  active.forEach(o => { channelCounts[o.channel] = (channelCounts[o.channel] || 0) + 1; });
-
-  const updateStatus = (id: string, status: OrderStatus) =>
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-
-  const statusBorder: Record<OrderStatus, string> = {
-    new:    "border-danger/60 shadow-[0_0_16px_hsl(var(--danger)/0.12)]",
-    cooking:"border-warning/50",
-    ready:  "border-success/50",
-    served: "border-border opacity-50",
-  };
-  const statusLabel: Record<OrderStatus, string> = {
-    new:    "🆕 ใหม่", cooking:"🔥 กำลังทำ", ready:"✅ พร้อม", served:"🍽 เสิร์ฟแล้ว",
-  };
-  const statusTextColor: Record<OrderStatus, string> = {
-    new:"text-danger", cooking:"text-warning", ready:"text-success", served:"text-muted-foreground",
-  };
-
-  return (
-    <div className="space-y-4">
-      <DeliveryToastContainer toasts={toasts} onDismiss={dismissToast} />
-      {/* Channel filter bar */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-        <button onClick={() => setFilter("all")}
-          className={cn("flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-bold border-2 whitespace-nowrap transition-all",
-            filter === "all" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-border-light")}>
-          📋 ทั้งหมด
-          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-primary/15 text-primary">{active.length}</span>
-        </button>
-        <button onClick={() => setFilter("delivery")}
-          className={cn("px-3.5 py-2 rounded-xl text-[12px] font-bold border-2 whitespace-nowrap transition-all",
-            filter === "delivery" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:border-border-light")}>
-          🛵 Delivery ทั้งหมด
-        </button>
-        <button onClick={playDeliveryChime}
-          className="ml-auto px-3 py-2 rounded-xl text-[12px] font-semibold border-2 border-border text-muted-foreground hover:border-border-light whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0"
-          title="ทดสอบเสียงแจ้งเตือน">
-          🔔 ทดสอบเสียง
-        </button>
-        {(Object.entries(CHANNELS) as [ChannelKey, typeof CHANNELS[ChannelKey]][]).map(([key, ch]) => {
-          const count = channelCounts[key] || 0;
-          if (count === 0 && !["dinein","lineman","grab"].includes(key)) return null;
-          return (
-            <button key={key} onClick={() => setFilter(key)}
-              className={cn("flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold border-2 whitespace-nowrap transition-all",
-                filter === key ? "bg-primary/10 text-primary border-primary/50" : "border-border text-muted-foreground hover:border-border-light")}
-              style={filter === key ? { borderColor: ch.hex + "80", color: ch.hex, backgroundColor: ch.hex + "18" } : {}}>
-              {ch.icon} {ch.short}
-              {count > 0 && (
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full font-extrabold"
-                  style={{ background: ch.hex + "22", color: ch.hex }}>{count}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Order grid */}
-      {filtered.filter(o => o.status !== "served").length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <div className="text-[40px] mb-3">🎉</div>
-          <div className="text-[16px] font-bold text-foreground">ไม่มีออเดอร์ค้างในช่องทางนี้</div>
-        </div>
-      ) : (
-        <div className="grid gap-3" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))" }}>
-          {filtered
-            .filter(o => o.status !== "served")
-            .sort((a, b) => { const p = {new:0,cooking:1,ready:2,served:3}; return p[a.status] - p[b.status]; })
-            .map(order => {
-              const ch = CHANNELS[order.channel];
-              const isDelivery = delivery(order.channel);
-              const isLate = order.time > 600 && order.status !== "ready";
-              return (
-                <div key={order.id} className={cn(
-                  "bg-card border-2 rounded-2xl overflow-hidden transition-all",
-                  isLate ? "border-danger/60" : statusBorder[order.status]
-                )}>
-                  {/* Header */}
-                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("font-mono font-extrabold text-[16px]", statusTextColor[order.status])}>{order.id}</span>
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold border"
-                        style={{ background: ch.hex + "15", color: ch.hex, borderColor: ch.hex + "40" }}>
-                        {ch.icon} {ch.short}
-                      </span>
-                    </div>
-                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold border",
-                      order.status === "new" ? "bg-danger/10 text-danger border-danger/30" :
-                      order.status === "ready" ? "bg-success/10 text-success border-success/30" :
-                      "bg-warning/10 text-warning border-warning/30")}>
-                      {statusLabel[order.status]}
-                    </span>
-                  </div>
-
-                  {/* Table + Timer */}
-                  <div className="px-4 py-2 flex items-center justify-between border-b border-border">
-                    <span className="text-[13px] font-bold text-foreground">
-                      {isDelivery ? "🛵" : order.channel === "kiosk" ? "📱" : order.channel === "qrorder" ? "📲" : "🪑"} {order.table}
-                    </span>
-                    <span className={cn("font-mono text-[14px] font-extrabold tabular-nums",
-                      isLate ? "text-danger" : order.time > 300 ? "text-warning" : "text-foreground")}>
-                      ⏱ {formatTime(order.time)}
-                    </span>
-                  </div>
-
-                  {/* Items */}
-                  <div className="px-4 py-3 border-b border-border space-y-0.5">
-                    {order.items.map((item, i) => (
-                      <div key={i} className="text-[13px] font-semibold text-foreground">{item}</div>
-                    ))}
-                    {order.note && <div className="text-[12px] text-warning font-semibold mt-1">📝 {order.note}</div>}
-                  </div>
-
-                  {/* Delivery info */}
-                  {isDelivery && (
-                    <div className="px-4 py-2 flex justify-between border-b border-border text-[12px]"
-                      style={{ background: ch.hex + "08" }}>
-                      <span className="text-muted-foreground">🚴 ไรเดอร์: <strong className="text-foreground">{order.driver || "—"}</strong></span>
-                      <span className="text-muted-foreground">⏰ ETA: <strong className="text-accent">{order.eta || "—"}</strong></span>
-                    </div>
-                  )}
-
-                  {/* Footer */}
-                  <div className="px-4 py-3 flex items-center justify-between">
-                    <span className="font-mono text-[18px] font-extrabold text-accent tabular-nums">฿{order.total}</span>
-                    <div className="flex gap-1.5">
-                      {order.status === "new" && (
-                        <button onClick={() => updateStatus(order.id, "cooking")}
-                          className="px-3.5 py-2 rounded-xl text-[12px] font-bold text-white bg-warning hover:opacity-90 transition-opacity">
-                          🔥 รับออเดอร์
-                        </button>
-                      )}
-                      {order.status === "cooking" && (
-                        <button onClick={() => updateStatus(order.id, "ready")}
-                          className="px-3.5 py-2 rounded-xl text-[12px] font-bold text-white bg-success hover:opacity-90 transition-opacity">
-                          ✅ เสร็จแล้ว
-                        </button>
-                      )}
-                      {order.status === "ready" && (
-                        <button onClick={() => updateStatus(order.id, "served")}
-                          className="px-3.5 py-2 rounded-xl text-[12px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity">
-                          {isDelivery ? "📦 ส่งแล้ว" : "🍽 เสิร์ฟ"}
-                        </button>
-                      )}
-                      <button className="px-2.5 py-2 rounded-xl text-[12px] border border-border text-muted-foreground hover:border-border-light transition-colors">🖨</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── ShopeeFood Connect Modal ──────────────────────────────
-const WEBHOOK_URL = "https://api.yourrestaurant.com/webhooks/shopeefood";
-
-type ModalStep = "intro" | "apikey" | "webhook" | "test" | "done";
-
-function ShopeeFoodModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [step, setStep] = useState<ModalStep>("intro");
-  const [apiKey, setApiKey] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [shopId, setShopId] = useState("");
-  const [showSecret, setShowSecret] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testOk, setTestOk] = useState(false);
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  const copy = () => {
-    navigator.clipboard.writeText(WEBHOOK_URL);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const runTest = () => {
-    setTesting(true);
-    setTimeout(() => { setTesting(false); setTestOk(true); }, 1800);
-  };
-
-  const STEPS: { id: ModalStep; label: string }[] = [
-    { id: "intro",   label: "เริ่มต้น" },
-    { id: "apikey",  label: "API Keys" },
-    { id: "webhook", label: "Webhook" },
-    { id: "test",    label: "ทดสอบ" },
-    { id: "done",    label: "เสร็จสิ้น" },
-  ];
-  const stepIdx = STEPS.findIndex(s => s.id === step);
-
-  return (
-    <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === overlayRef.current) onClose(); }}>
-      <div className="bg-card border border-border rounded-2xl w-full max-w-[480px] shadow-[0_20px_60px_hsl(var(--primary)/0.15)] overflow-hidden">
-
-        {/* Modal header */}
-        <div className="px-6 pt-5 pb-4 border-b border-border flex items-center justify-between"
-          style={{ background: "#EE4D2D10" }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[22px] border"
-              style={{ background: "#EE4D2D18", borderColor: "#EE4D2D40" }}>🟠</div>
-            <div>
-              <div className="text-[15px] font-extrabold text-foreground">เชื่อมต่อ ShopeeFood</div>
-              <div className="text-[11px] text-muted-foreground">Commission 25% · ตั้งค่าครั้งเดียว</div>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-border transition-colors text-[18px]">✕</button>
-        </div>
-
-        {/* Step progress */}
-        <div className="px-6 py-3 border-b border-border flex items-center gap-1.5">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center gap-1.5 flex-1 last:flex-none">
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all",
-                i < stepIdx ? "bg-success text-white" :
-                i === stepIdx ? "text-white shadow-[0_0_10px_hsl(var(--primary)/0.4)]" : "bg-border text-muted-foreground"
-              )} style={i === stepIdx ? { background: "#EE4D2D" } : {}}>
-                {i < stepIdx ? "✓" : i + 1}
-              </div>
-              <span className={cn("text-[10px] font-semibold hidden sm:block",
-                i === stepIdx ? "text-foreground" : "text-muted-foreground")}>{s.label}</span>
-              {i < STEPS.length - 1 && <div className={cn("flex-1 h-[1.5px] rounded-full", i < stepIdx ? "bg-success" : "bg-border")} />}
-            </div>
-          ))}
-        </div>
-
-        {/* Step content */}
-        <div className="px-6 py-5">
-
-          {/* Step 0: Intro */}
-          {step === "intro" && (
-            <div className="space-y-4">
-              <div className="bg-background border border-border rounded-xl p-4 space-y-2.5">
-                <div className="text-[13px] font-bold text-foreground">📋 สิ่งที่ต้องเตรียม</div>
-                {[
-                  { icon:"🔑", text:"ShopeeFood Partner API Key & Secret" },
-                  { icon:"🏪", text:"Shop ID จาก ShopeeFood Partner Portal" },
-                  { icon:"🌐", text:"Webhook URL (เราจะให้ในขั้นตอนถัดไป)" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-[12px] text-muted-foreground">
-                    <span>{item.icon}</span><span>{item.text}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-warning/8 border border-warning/25 rounded-xl p-3 flex gap-2.5">
-                <span className="text-[16px] shrink-0">💡</span>
-                <div className="text-[11px] text-muted-foreground leading-relaxed">
-                  ขอ API Key ได้ที่ <span className="text-warning font-bold">ShopeeFood Partner Portal → Settings → API Integration</span> ใช้เวลาอนุมัติ 1-3 วันทำการ
-                </div>
-              </div>
-              <button onClick={() => setStep("apikey")}
-                className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                style={{ background: "#EE4D2D", boxShadow: "0 4px 16px #EE4D2D40" }}>
-                เริ่มต้นเชื่อมต่อ →
-              </button>
-            </div>
-          )}
-
-          {/* Step 1: API Key */}
-          {step === "apikey" && (
-            <div className="space-y-3.5">
-              <div className="text-[13px] font-bold text-foreground mb-1">🔑 กรอก API Credentials</div>
-              {[
-                { label:"Partner API Key", value:apiKey, set:setApiKey, placeholder:"sp_live_xxxxxxxxxxxxxxxx", icon:"🔑" },
-                { label:"Shop ID", value:shopId, set:setShopId, placeholder:"1234567", icon:"🏪" },
-              ].map((f, i) => (
-                <div key={i}>
-                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">{f.icon} {f.label}</label>
-                  <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
-                    className="w-full h-9 px-3 rounded-xl border border-border bg-background text-[12px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60 transition-colors" />
-                </div>
-              ))}
-              <div>
-                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">🔒 Secret Key</label>
-                <div className="relative">
-                  <input value={secretKey} onChange={e => setSecretKey(e.target.value)}
-                    type={showSecret ? "text" : "password"} placeholder="••••••••••••••••••••••"
-                    className="w-full h-9 px-3 pr-10 rounded-xl border border-border bg-background text-[12px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60 transition-colors" />
-                  <button onClick={() => setShowSecret(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[14px]">
-                    {showSecret ? "🙈" : "👁"}
-                  </button>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setStep("intro")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
-                <button onClick={() => setStep("webhook")}
-                  disabled={!apiKey || !secretKey || !shopId}
-                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: "#EE4D2D" }}>
-                  ถัดไป →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Webhook */}
-          {step === "webhook" && (
-            <div className="space-y-4">
-              <div className="text-[13px] font-bold text-foreground">🌐 ตั้งค่า Webhook URL</div>
-              <div className="bg-background border border-border rounded-xl p-3">
-                <div className="text-[10px] font-semibold text-muted-foreground mb-1.5">📎 Webhook Endpoint ของคุณ</div>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-[11px] font-mono text-primary bg-primary/8 px-2.5 py-1.5 rounded-lg overflow-hidden text-ellipsis whitespace-nowrap">
-                    {WEBHOOK_URL}
-                  </code>
-                  <button onClick={copy}
-                    className={cn("px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all whitespace-nowrap",
-                      copied ? "border-success/40 bg-success/10 text-success" : "border-border text-muted-foreground hover:border-border-light")}>
-                    {copied ? "✓ Copied!" : "📋 Copy"}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-[12px] font-bold text-foreground">วิธีตั้งค่าใน ShopeeFood Partner Portal</div>
-                {[
-                  { step:"1", text:'เข้า Partner Portal → Settings → Webhooks', tag:null },
-                  { step:"2", text:'คลิก "Add Webhook Endpoint"', tag:null },
-                  { step:"3", text:'วาง URL ด้านบนในช่อง Endpoint URL', tag:"URL" },
-                  { step:"4", text:'เลือก Events: order.created, order.status_changed, order.cancelled', tag:"Events" },
-                  { step:"5", text:'คลิก Save และกด "Send Test Event"', tag:null },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start gap-2.5">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 mt-0.5 text-white"
-                      style={{ background: "#EE4D2D" }}>{item.step}</div>
-                    <div className="text-[11px] text-muted-foreground leading-relaxed flex-1">
-                      {item.text}
-                      {item.tag && <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-border text-foreground">{item.tag}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setStep("apikey")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
-                <button onClick={() => setStep("test")}
-                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "#EE4D2D" }}>
-                  ทดสอบการเชื่อมต่อ →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Test */}
-          {step === "test" && (
-            <div className="space-y-4">
-              <div className="text-[13px] font-bold text-foreground">🧪 ทดสอบการเชื่อมต่อ</div>
-              <div className="bg-background border border-border rounded-xl p-4 space-y-3">
-                {[
-                  { label:"Partner API Key", value: apiKey.slice(0,8) + "••••••••", ok:true },
-                  { label:"Shop ID",          value: shopId, ok:true },
-                  { label:"Secret Key",       value: "••••••••••••••••", ok:true },
-                  { label:"Webhook URL",      value: "ตั้งค่าแล้ว", ok:true },
-                ].map((row, i) => (
-                  <div key={i} className="flex items-center justify-between text-[12px]">
-                    <span className="text-muted-foreground">{row.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-foreground">{row.value}</span>
-                      <span className="text-success text-[14px]">✓</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {!testOk ? (
-                <button onClick={runTest} disabled={testing}
-                  className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-all"
-                  style={{ background: testing ? "#EE4D2D80" : "#EE4D2D" }}>
-                  {testing ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      กำลังทดสอบ...
-                    </span>
-                  ) : "🔗 ทดสอบการเชื่อมต่อ"}
-                </button>
-              ) : (
-                <div className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center gap-2.5">
-                  <span className="text-[20px]">🎉</span>
-                  <div>
-                    <div className="text-[12px] font-bold text-success">การเชื่อมต่อสำเร็จ!</div>
-                    <div className="text-[10px] text-muted-foreground">ShopeeFood ตอบกลับ HTTP 200 OK · Webhook รับ Test Event แล้ว</div>
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button onClick={() => setStep("webhook")} className="flex-1 py-2 rounded-xl text-[12px] font-bold border border-border text-muted-foreground hover:bg-border/50 transition-colors">← ย้อนกลับ</button>
-                <button onClick={() => setStep("done")} disabled={!testOk}
-                  className="flex-1 py-2 rounded-xl text-[12px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: "#EE4D2D" }}>
-                  เปิดใช้งาน →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Done */}
-          {step === "done" && (
-            <div className="space-y-4 text-center">
-              <div className="text-[48px] mt-2">🎊</div>
-              <div>
-                <div className="text-[16px] font-extrabold text-foreground mb-1">เชื่อมต่อ ShopeeFood สำเร็จ!</div>
-                <div className="text-[12px] text-muted-foreground">ออเดอร์จาก ShopeeFood จะเข้ามาใน Unified Order Hub โดยอัตโนมัติ</div>
-              </div>
-              <div className="bg-background border border-border rounded-xl p-4 text-left space-y-2">
-                {[
-                  "✅ ออเดอร์ใหม่ปรากฏใน Unified Order Hub",
-                  "✅ แจ้งเตือนเสียงเมื่อมีออเดอร์ใหม่",
-                  "✅ สถานะ real-time: รับออเดอร์ → ทำ → เสร็จ → ส่ง",
-                  "✅ คิด Commission 25% ใน Analytics อัตโนมัติ",
-                ].map((text, i) => (
-                  <div key={i} className="text-[12px] text-muted-foreground">{text}</div>
-                ))}
-              </div>
-              <button onClick={onSuccess}
-                className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                style={{ background: "#EE4D2D", boxShadow: "0 4px 16px #EE4D2D40" }}>
-                เริ่มรับออเดอร์จาก ShopeeFood 🚀
-              </button>
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Tab 2: Channel Management ─────────────────────────────
-function ChannelMgmtTab() {
-  const [channels, setChannels] = useState(CHANNEL_DATA);
-  const [showShopeeModal, setShowShopeeModal] = useState(false);
-
-  const connected = channels.filter(c => c.connected);
-  const totalRevenue = connected.reduce((s, c) => s + c.revenue, 0);
-  const totalOrders = connected.reduce((s, c) => s + c.orders, 0);
-
-  const toggle = (key: ChannelKey) =>
-    setChannels(prev => prev.map(c => c.key === key ? { ...c, connected: !c.connected } : c));
-
-  const connectShopee = () =>
-    setChannels(prev => prev.map(c => c.key === "shopee" ? { ...c, connected: true } : c));
-
-  return (
-    <div className="space-y-4">
-      {showShopeeModal && (
-        <ShopeeFoodModal
-          onClose={() => setShowShopeeModal(false)}
-          onSuccess={() => { connectShopee(); setShowShopeeModal(false); }}
-        />
-      )}
-
-      {/* Summary stats */}
-      <div className="flex gap-3 flex-wrap">
-        {[
-          { icon:"📊", label:"ช่องทางที่เชื่อมต่อ", value:`${connected.length}/${channels.length}`, cls:"text-primary" },
-          { icon:"🧾", label:"ออเดอร์รวม/เดือน",    value:totalOrders.toLocaleString(),           cls:"text-accent"  },
-          { icon:"💰", label:"รายได้รวม/เดือน",      value:`฿${(totalRevenue/1000).toFixed(0)}K`, cls:"text-success" },
-          { icon:"📈", label:"ช่องทางโตเร็วสุด",     value:"Kiosk +45%",                          cls:"text-warning" },
-        ].map((s, i) => (
-          <div key={i} className="flex-1 min-w-[130px] bg-card border border-border rounded-2xl p-4 shadow-card">
-            <div className="text-[11px] text-muted-foreground mb-1">{s.icon} {s.label}</div>
-            <div className={cn("font-mono text-[20px] font-black tabular-nums", s.cls)}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Channel cards */}
-      <div className="grid gap-3" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))" }}>
-        {channels.map(ch => {
-          const info = CHANNELS[ch.key];
-          const revPct = totalRevenue > 0 ? Math.round(ch.revenue / totalRevenue * 100) : 0;
-          return (
-            <div key={ch.key} className={cn(
-              "bg-card rounded-2xl p-4 border transition-all shadow-card",
-              ch.connected ? "" : "opacity-70"
-            )}
-              style={{ borderColor: ch.connected ? info.hex + "55" : undefined }}>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px] border"
-                    style={{ background: info.hex + "15", borderColor: info.hex + "30" }}>
-                    {info.icon}
-                  </div>
-                  <div>
-                    <div className="text-[15px] font-extrabold text-foreground">{info.name}</div>
-                    {ch.commission > 0 && (
-                      <div className="text-[10px] text-muted-foreground">Commission {ch.commission}%</div>
-                    )}
-                  </div>
-                </div>
-                {/* Toggle */}
-                <div onClick={() => toggle(ch.key)}
-                  className={cn("w-12 h-6 rounded-full cursor-pointer relative transition-all",
-                    ch.connected ? "bg-success/30" : "bg-border")}>
-                  <div className={cn(
-                    "w-4.5 h-4.5 rounded-full absolute top-[3px] transition-all w-[18px] h-[18px]",
-                    ch.connected ? "right-[3px] bg-success shadow-[0_0_6px_hsl(var(--success)/0.5)]" : "left-[3px] bg-muted-foreground"
-                  )} />
-                </div>
-              </div>
-
-              {ch.connected ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {[
-                      { l:"ออเดอร์",    v:ch.orders.toLocaleString() },
-                      { l:"รายได้",     v:`฿${(ch.revenue/1000).toFixed(0)}K` },
-                      { l:"เฉลี่ย/บิล", v:`฿${ch.avg}` },
-                    ].map((s, i) => (
-                      <div key={i} className="bg-background rounded-xl p-2 text-center">
-                        <div className="text-[9px] text-muted-foreground">{s.l}</div>
-                        <div className="text-[13px] font-extrabold font-mono text-foreground">{s.v}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Revenue bar */}
-                  <div className="mb-2">
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-muted-foreground">สัดส่วนรายได้</span>
-                      <span className="font-mono font-bold" style={{ color: info.hex }}>{revPct}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width:`${revPct}%`, background: info.hex }} />
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    {ch.commission === 0 && (
-                      <span className="text-[10px] font-bold bg-success/10 text-success border border-success/30 px-2 py-0.5 rounded-md">GP = 0%</span>
-                    )}
-                    <span className={cn(
-                      "ml-auto text-[11px] font-bold px-2 py-0.5 rounded-md border",
-                      (ch as any).growth > 0 ? "bg-success/10 text-success border-success/30" : "bg-danger/10 text-danger border-danger/30"
-                    )}>
-                      {(ch as any).growth > 0 ? "▲" : "▼"} {Math.abs((ch as any).growth)}%
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-3">
-                  <div className="text-[13px] text-muted-foreground mb-2">ยังไม่ได้เชื่อมต่อ</div>
-                  {(ch as any).potential && (
-                    <div className="text-[12px] text-success mb-3">
-                      💡 คาดว่าจะเพิ่มรายได้ ~฿{((ch as any).potential / 1000).toFixed(0)}K/เดือน
-                    </div>
-                  )}
-                  <button
-                    onClick={() => ch.key === "shopee" ? setShowShopeeModal(true) : undefined}
-                    className="px-5 py-2 rounded-xl text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                    style={{ background: info.hex, boxShadow: `0 4px 16px ${info.hex}40` }}>
-                    🔗 เชื่อมต่อ {info.name}
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Tab 3: Analytics ──────────────────────────────────────
-function AnalyticsTab() {
-  const connected = CHANNEL_DATA.filter(c => c.connected);
-  const netData = connected.map(c => ({
-    ...c,
-    netRevenue: Math.round(c.revenue * (1 - c.commission / 100)),
-    commissionAmt: Math.round(c.revenue * c.commission / 100),
-  }));
-
-  const totalRev = netData.reduce((s, c) => s + c.revenue, 0);
-  const totalCommission = netData.reduce((s, c) => s + c.commissionAmt, 0);
-  const maxRev = Math.max(...netData.map(c => c.revenue));
-
-  const sorted = [...netData].sort((a, b) => b.revenue - a.revenue);
-
-  return (
-    <div className="space-y-4">
-      {/* Stats */}
-      <div className="flex gap-3 flex-wrap">
-        {[
-          { icon:"💰", label:"รายได้รวม",       value:`฿${(totalRev/1000).toFixed(0)}K`,                  cls:"text-success" },
-          { icon:"💸", label:"ค่า Commission",   value:`฿${(totalCommission/1000).toFixed(0)}K`,           cls:"text-danger"  },
-          { icon:"💵", label:"รายได้สุทธิ",      value:`฿${((totalRev-totalCommission)/1000).toFixed(0)}K`, cls:"text-accent"  },
-          { icon:"📊", label:"ช่องทาง GP = 0%", value:`${connected.filter(c=>c.commission===0).length} ช่องทาง`, cls:"text-primary" },
-        ].map((s, i) => (
-          <div key={i} className="flex-1 min-w-[130px] bg-card border border-border rounded-2xl p-4 shadow-card">
-            <div className="text-[11px] text-muted-foreground mb-1">{s.icon} {s.label}</div>
-            <div className={cn("font-mono text-[20px] font-black tabular-nums", s.cls)}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Revenue bar chart */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="text-[14px] font-bold text-foreground mb-4">📊 เปรียบเทียบรายได้ตามช่องทาง (รายเดือน)</div>
-        <div className="space-y-3">
-          {sorted.map(ch => {
-            const info = CHANNELS[ch.key];
-            const pct = Math.round(ch.revenue / totalRev * 100);
-            return (
-              <div key={ch.key} className="flex items-center gap-3">
-                <div className="w-24 flex items-center gap-1.5 text-[12px] font-semibold text-foreground shrink-0">
-                  {info.icon} {info.short}
-                </div>
-                <div className="flex-1 relative h-6 rounded-lg bg-border overflow-hidden">
-                  {/* Commission overlay (lighter) */}
-                  <div className="absolute inset-0 rounded-lg transition-all duration-500"
-                    style={{ width:`${(ch.revenue/maxRev)*100}%`, background: info.hex + "40" }} />
-                  {/* Net revenue (solid) */}
-                  <div className="absolute inset-0 rounded-lg transition-all duration-500"
-                    style={{ width:`${(ch.netRevenue/maxRev)*100}%`, background: info.hex }} />
-                  {ch.commission > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-danger font-bold">
-                      -{ch.commission}% GP
-                    </div>
-                  )}
-                </div>
-                <div className="w-16 text-right shrink-0">
-                  <div className="font-mono text-[13px] font-extrabold tabular-nums" style={{ color: info.hex }}>
-                    ฿{(ch.revenue/1000).toFixed(0)}K
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">{pct}%</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-4 justify-center mt-3 text-[10px] text-muted-foreground">
-          <span>■ สีเข้ม = รายได้สุทธิ</span>
-          <span>■ สีจาง = ค่า Commission</span>
-        </div>
-      </div>
-
-      {/* Comparison table */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card overflow-x-auto">
-        <div className="text-[14px] font-bold text-foreground mb-4">📋 เปรียบเทียบทุกช่องทาง</div>
-        <div className="min-w-[680px]">
-          {/* Header */}
-          <div className="grid gap-2 pb-2 border-b border-border text-[11px] font-bold text-muted-foreground"
-            style={{ gridTemplateColumns:"110px repeat(6,1fr)" }}>
-            {["ช่องทาง","ออเดอร์","รายได้","เฉลี่ย/บิล","ช่วง Peak","เมนูขายดี","Retention"].map(h => (
-              <div key={h}>{h}</div>
-            ))}
-          </div>
-          {sorted.map(ch => {
-            const info = CHANNELS[ch.key];
-            return (
-              <div key={ch.key} className="grid gap-2 py-2.5 border-b border-border/40 text-[12px]"
-                style={{ gridTemplateColumns:"110px repeat(6,1fr)" }}>
-                <div className="flex items-center gap-1.5 font-bold text-foreground">{info.icon} {info.short}</div>
-                <div className="font-mono font-bold text-foreground tabular-nums">{ch.orders.toLocaleString()}</div>
-                <div className="font-mono font-bold text-accent tabular-nums">฿{(ch.revenue/1000).toFixed(0)}K</div>
-                <div className="font-mono text-foreground tabular-nums">฿{ch.avg}</div>
-                <div className="text-muted-foreground">{ch.peak}</div>
-                <div className="text-foreground">{ch.topMenu}</div>
-                <div>
-                  <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold border",
-                    ch.retention > 60 ? "bg-success/10 text-success border-success/30" :
-                    ch.retention > 40 ? "bg-warning/10 text-warning border-warning/30" :
-                    "bg-danger/10 text-danger border-danger/30")}>
-                    {ch.retention}%
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* AI insight */}
-      <div className="bg-card border border-primary/25 rounded-2xl p-5 shadow-card flex items-start gap-4">
-        <div className="text-[32px] shrink-0 mt-0.5">🤖</div>
-        <div>
-          <div className="text-[13px] font-bold text-gradient-primary mb-2">AI แนะนำ Omnichannel</div>
-          <div className="space-y-1.5">
-            {[
-              "📈 Kiosk + QR Order โตเร็วสุด (+45%, +38%) และ GP = 0% — ควรโปรโมทให้ลูกค้าหน้าร้านใช้มากขึ้น",
-              `💸 ค่า Commission Delivery รวม ฿${(totalCommission/1000).toFixed(0)}K/เดือน — พิจารณาโปรโมทช่องทาง GP ต่ำ (Robinhood 15%) หรือ Direct order`,
-              "🔄 Retention หน้าร้าน (72%) สูงกว่า Delivery (38-45%) — สร้าง Loyalty program ดึงลูกค้า Delivery มาเป็นลูกค้าตรง",
-            ].map((tip, i) => (
-              <div key={i} className="text-[12px] text-muted-foreground leading-relaxed">{tip}</div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────
-const TABS = [
-  { label:"📋 Unified Order Hub"     },
-  { label:"🔗 จัดการช่องทาง"          },
-  { label:"📊 Omnichannel Analytics" },
-];
 
 export function OmnichannelScreen() {
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState<OmniTab>("orders");
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<DeliveryOrder[]>([]);
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [addingPlatform, setAddingPlatform] = useState(false);
+
+  // Analytics date range
+  const [analyticsOrders, setAnalyticsOrders] = useState<{ channel: string; total: number; paid_at: string }[]>([]);
+  const [analyticsItems, setAnalyticsItems] = useState<{ name: string; qty: number }[]>([]);
+
+  useEffect(() => {
+    fetchData();
+    // Realtime subscription for new delivery orders
+    const channel = supabase.channel("omni-orders")
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "orders",
+      }, (payload) => {
+        const newOrder = payload.new as any;
+        if (DELIVERY_CHANNELS.includes(newOrder.channel)) {
+          playDeliveryChime();
+          toast.info(`🛵 ออเดอร์ใหม่จาก ${newOrder.channel} — ${newOrder.order_number}`);
+          fetchOrders();
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const fetchData = async () => {
+    await Promise.all([fetchOrders(), fetchPlatforms(), fetchAnalytics()]);
+    setLoading(false);
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, order_number, channel, status, total, created_at, customer_phone, driver_name, note, order_items(id, name, qty, price, status)")
+        .in("channel", DELIVERY_CHANNELS)
+        .gte("created_at", todayStart.toISOString())
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setOrders((data || []) as DeliveryOrder[]);
+    } catch (err: any) {
+      toast.error("โหลดออเดอร์ไม่สำเร็จ");
+    }
+  };
+
+  const fetchPlatforms = async () => {
+    try {
+      const { data, error } = await supabase.from("delivery_platforms").select("*");
+      if (error) throw error;
+      setPlatforms(data || []);
+    } catch { /* ignore */ }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: ordData } = await supabase
+        .from("orders")
+        .select("channel, total, paid_at")
+        .eq("status", "paid")
+        .in("channel", DELIVERY_CHANNELS)
+        .gte("paid_at", thirtyDaysAgo.toISOString());
+      setAnalyticsOrders(ordData || []);
+
+      // Top delivery items
+      const orderIds = (ordData || []).map((o: any) => o.id).filter(Boolean);
+      if (ordData && ordData.length > 0) {
+        // Get order IDs first
+        const { data: fullOrders } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("status", "paid")
+          .in("channel", DELIVERY_CHANNELS)
+          .gte("paid_at", thirtyDaysAgo.toISOString());
+
+        if (fullOrders && fullOrders.length > 0) {
+          const ids = fullOrders.map(o => o.id);
+          let allItems: { name: string; qty: number }[] = [];
+          for (let i = 0; i < ids.length; i += 200) {
+            const chunk = ids.slice(i, i + 200);
+            const { data: items } = await supabase
+              .from("order_items")
+              .select("name, qty")
+              .in("order_id", chunk);
+            allItems = allItems.concat(items || []);
+          }
+          setAnalyticsItems(allItems);
+        }
+      }
+    } catch { /* ignore */ }
+  };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
+      if (error) throw error;
+      toast.success("อัปเดตสถานะแล้ว");
+      fetchOrders();
+    } catch (err: any) {
+      toast.error("อัปเดตไม่สำเร็จ");
+    }
+  };
+
+  const updatePlatform = async (id: string, field: string, value: any) => {
+    try {
+      const { error } = await supabase.from("delivery_platforms").update({ [field]: value }).eq("id", id);
+      if (error) throw error;
+      toast.success("✓ บันทึกแล้ว", { duration: 1500 });
+      fetchPlatforms();
+    } catch { toast.error("บันทึกไม่สำเร็จ"); }
+  };
+
+  // Analytics computed
+  const revenueByPlatform = useMemo(() => {
+    const map: Record<string, number> = {};
+    analyticsOrders.forEach(o => {
+      if (o.channel && o.total) map[o.channel] = (map[o.channel] || 0) + o.total;
+    });
+    return Object.entries(map).map(([channel, total]) => {
+      const platform = platforms.find(p => p.name.toLowerCase().replace(/\s/g, "_") === channel);
+      const commission = platform?.commission_pct || 0;
+      return { channel, total: Math.round(total), commission, commissionAmt: Math.round(total * commission / 100), net: Math.round(total * (1 - commission / 100)) };
+    });
+  }, [analyticsOrders, platforms]);
+
+  const topDeliveryItems = useMemo(() => {
+    const map: Record<string, number> = {};
+    analyticsItems.forEach(i => { map[i.name] = (map[i.name] || 0) + i.qty; });
+    return Object.entries(map).sort(([, a], [, b]) => b - a).slice(0, 10).map(([name, qty]) => ({ name, qty }));
+  }, [analyticsItems]);
+
+  const TABS: { key: OmniTab; label: string }[] = [
+    { key: "orders", label: "📋 Live Orders" },
+    { key: "config", label: "🔗 Platform Config" },
+    { key: "analytics", label: "📊 Analytics" },
+  ];
+
+  if (loading) {
+    return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      {/* Header */}
-      <div className="px-5 py-3 bg-card border-b border-border shrink-0">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[16px] shadow-primary">O</div>
-          <div>
-            <div className="text-[15px] font-extrabold text-gradient-primary leading-tight">Omnichannel & Multi-Platform</div>
-            <div className="text-[10px] text-muted-foreground">หน้าร้าน · LINE MAN · Grab · Robinhood · ShopeeFood · Kiosk · QR Order · โทรสั่ง — ทุกช่องทางในจอเดียว</div>
-          </div>
+    <div className="flex-1 p-6 overflow-y-auto scrollbar-hide bg-background">
+      <div className="max-w-[1100px] mx-auto space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="text-[18px] font-bold text-foreground">🌐 Omnichannel</div>
+          <button onClick={playDeliveryChime} className="px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-border text-muted-foreground hover:text-foreground transition-colors" title="ทดสอบเสียง">
+            🔔 ทดสอบเสียง
+          </button>
         </div>
-        {/* Tabs */}
+
         <div className="flex gap-1.5">
-          {TABS.map((t, i) => (
-            <button key={i} onClick={() => setTab(i)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-[12px] font-bold border-2 transition-all whitespace-nowrap",
-                tab === i
-                  ? "gradient-primary text-white border-transparent shadow-primary"
-                  : "border-border text-muted-foreground hover:border-border-light bg-background"
-              )}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={cn("px-4 py-2 rounded-xl text-[13px] font-bold border transition-all",
+                tab === t.key ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
               {t.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-        {tab === 0 && <OrderHubTab />}
-        {tab === 1 && <ChannelMgmtTab />}
-        {tab === 2 && <AnalyticsTab />}
+        {/* ═══ Tab 1: Live Orders ═══ */}
+        {tab === "orders" && (
+          <div className="space-y-4">
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-3">
+              <StatBox icon="📦" label="ออเดอร์วันนี้" value={`${orders.length}`} />
+              <StatBox icon="💰" label="รายได้ Delivery" value={`฿${orders.reduce((s, o) => s + (o.total || 0), 0).toLocaleString()}`} />
+              <StatBox icon="📊" label="เฉลี่ย/ออเดอร์" value={orders.length > 0 ? `฿${Math.round(orders.reduce((s, o) => s + (o.total || 0), 0) / orders.length).toLocaleString()}` : "—"} />
+              <StatBox icon="🛵" label="แพลตฟอร์ม" value={`${new Set(orders.map(o => o.channel)).size}`} />
+            </div>
+
+            {orders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <div className="text-[40px] mb-3">📭</div>
+                <div className="text-[16px] font-bold text-foreground">ยังไม่มีออเดอร์จาก Delivery วันนี้</div>
+                <div className="text-[12px] text-muted-foreground mt-1">ออเดอร์จะแสดงอัตโนมัติเมื่อมีเข้ามา (Realtime)</div>
+              </div>
+            ) : (
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+                {orders.map(order => {
+                  const color = CHANNEL_COLORS[order.channel || ""] || "#888";
+                  const icon = CHANNEL_ICONS[order.channel || ""] || "📦";
+                  return (
+                    <div key={order.id} className="bg-card border-2 rounded-2xl overflow-hidden shadow-sm" style={{ borderColor: color + "40" }}>
+                      <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-extrabold text-[15px] text-foreground">{order.order_number}</span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold border" style={{ background: color + "15", color, borderColor: color + "40" }}>
+                            {icon} {order.channel}
+                          </span>
+                        </div>
+                        <StatusBadge status={order.status} />
+                      </div>
+                      <div className="px-4 py-3">
+                        <div className="space-y-1 mb-3">
+                          {order.order_items.map(item => (
+                            <div key={item.id} className="flex justify-between text-[12px]">
+                              <span className="text-foreground">{item.name} x{item.qty}</span>
+                              <span className="font-mono text-muted-foreground">฿{item.price * item.qty}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center border-t border-border/40 pt-2">
+                          <span className="font-mono text-[16px] font-extrabold text-accent">฿{(order.total || 0).toLocaleString()}</span>
+                          <span className="text-[11px] text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                        </div>
+                        {order.driver_name && (
+                          <div className="text-[11px] text-muted-foreground mt-1">🚴 {order.driver_name}</div>
+                        )}
+                      </div>
+                      <div className="px-4 py-2.5 border-t border-border/40 flex gap-2">
+                        {order.status === "open" && (
+                          <Button size="sm" className="flex-1" onClick={() => updateOrderStatus(order.id, "confirmed")}>✅ Accept</Button>
+                        )}
+                        {order.status === "confirmed" && (
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => updateOrderStatus(order.id, "preparing")}>👨‍🍳 Preparing</Button>
+                        )}
+                        {order.status === "preparing" && (
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => updateOrderStatus(order.id, "ready")}>📦 Ready</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ Tab 2: Platform Config ═══ */}
+        {tab === "config" && (
+          <div className="space-y-4">
+            <div className="px-4 py-3 rounded-xl bg-muted/50 border border-border text-[12px] text-muted-foreground">
+              💡 การเชื่อมต่อ API จริงต้องมี Merchant API key จากแต่ละแพลตฟอร์ม — ติดต่อ LINE MAN / Grab สำหรับ API key
+            </div>
+
+            {platforms.map(p => (
+              <PlatformCard key={p.id} platform={p} onUpdate={updatePlatform} />
+            ))}
+
+            <Button variant="outline" onClick={() => setAddingPlatform(true)} className="w-full">
+              <Plus className="w-4 h-4 mr-2" /> เพิ่ม Platform
+            </Button>
+
+            <AddPlatformDialog open={addingPlatform} onClose={() => setAddingPlatform(false)} onAdded={() => { setAddingPlatform(false); fetchPlatforms(); }} />
+          </div>
+        )}
+
+        {/* ═══ Tab 3: Analytics ═══ */}
+        {tab === "analytics" && (
+          <div className="space-y-4">
+            {revenueByPlatform.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="text-[32px] mb-2">📭</div>
+                <div className="text-[14px] font-bold text-foreground">ยังไม่มีข้อมูล Delivery 30 วัน</div>
+              </div>
+            ) : (
+              <>
+                {/* Pie chart */}
+                <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                  <div className="text-[14px] font-bold text-foreground mb-3">📊 รายได้ตามแพลตฟอร์ม (30 วัน)</div>
+                  <div className="flex gap-6 items-center">
+                    <ResponsiveContainer width={200} height={200}>
+                      <PieChart>
+                        <Pie data={revenueByPlatform} dataKey="total" nameKey="channel" cx="50%" cy="50%" outerRadius={80} label={({ channel }) => channel}>
+                          {revenueByPlatform.map((entry, i) => (
+                            <Cell key={i} fill={CHANNEL_COLORS[entry.channel] || "#888"} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => `฿${v.toLocaleString()}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex-1">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="text-muted-foreground"><th className="text-left py-1">Platform</th><th className="text-right py-1">Gross</th><th className="text-right py-1">Com%</th><th className="text-right py-1">Com฿</th><th className="text-right py-1">Net</th></tr>
+                        </thead>
+                        <tbody>
+                          {revenueByPlatform.map(r => (
+                            <tr key={r.channel} className="border-t border-border/30">
+                              <td className="py-1.5 font-medium">{r.channel}</td>
+                              <td className="py-1.5 text-right font-mono">฿{r.total.toLocaleString()}</td>
+                              <td className="py-1.5 text-right">{r.commission}%</td>
+                              <td className="py-1.5 text-right font-mono text-destructive">-฿{r.commissionAmt.toLocaleString()}</td>
+                              <td className="py-1.5 text-right font-mono font-bold text-primary">฿{r.net.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top items */}
+                {topDeliveryItems.length > 0 && (
+                  <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                    <div className="text-[14px] font-bold text-foreground mb-3">🏆 เมนูยอดนิยม Delivery</div>
+                    <div className="space-y-2">
+                      {topDeliveryItems.map((item, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="w-6 text-[13px] font-bold text-muted-foreground text-right">#{i + 1}</span>
+                          <span className="flex-1 text-[13px] font-medium text-foreground">{item.name}</span>
+                          <span className="font-mono text-[13px] font-bold text-foreground">{item.qty} ชิ้น</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button variant="outline" onClick={() => {
+                  const rows = ["Platform,Gross,Commission%,CommissionBaht,Net", ...revenueByPlatform.map(r => `${r.channel},${r.total},${r.commission},${r.commissionAmt},${r.net}`)];
+                  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `delivery_analytics_${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  toast.success("ดาวน์โหลด CSV แล้ว");
+                }}>
+                  📥 Export CSV
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function StatBox({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+      <div className="text-[20px] mb-1">{icon}</div>
+      <div className="font-mono text-[20px] font-extrabold text-foreground">{value}</div>
+      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    open: { label: "🆕 ใหม่", cls: "bg-destructive/10 text-destructive border-destructive/30" },
+    confirmed: { label: "✅ ยืนยัน", cls: "bg-primary/10 text-primary border-primary/30" },
+    preparing: { label: "🔥 กำลังทำ", cls: "bg-warning/10 text-warning border-warning/30" },
+    ready: { label: "📦 พร้อม", cls: "bg-primary/10 text-primary border-primary/30" },
+    paid: { label: "💰 ชำระแล้ว", cls: "bg-primary/10 text-primary border-primary/30" },
+  };
+  const s = map[status || ""] || { label: status || "—", cls: "bg-muted text-muted-foreground border-border" };
+  return <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold border", s.cls)}>{s.label}</span>;
+}
+
+function PlatformCard({ platform: p, onUpdate }: { platform: Platform; onUpdate: (id: string, field: string, value: any) => void }) {
+  const [showKey, setShowKey] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [commPct, setCommPct] = useState(p.commission_pct ?? 0);
+
+  const statusIcon = p.is_active ? (p.api_key ? "🟢" : "🟡") : "⚪";
+  const statusText = p.is_active ? (p.api_key ? "เชื่อมต่อแล้ว" : "ยังไม่ได้เชื่อมต่อ") : "ปิดใช้งาน";
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-[24px]">{p.icon || "📦"}</span>
+          <div>
+            <div className="text-[14px] font-bold text-foreground">{p.name}</div>
+            <div className="text-[11px] text-muted-foreground">{statusIcon} {statusText}</div>
+          </div>
+        </div>
+        <Switch checked={p.is_active ?? false} onCheckedChange={v => onUpdate(p.id, "is_active", v)} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Commission (%)</label>
+          <Input type="number" value={commPct} onChange={e => setCommPct(parseFloat(e.target.value) || 0)} onBlur={() => onUpdate(p.id, "commission_pct", commPct)} />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">API Key</label>
+          <div className="flex gap-1">
+            <Input type={showKey ? "text" : "password"} value={p.api_key || ""} onChange={e => onUpdate(p.id, "api_key", e.target.value)} />
+            <Button size="icon" variant="ghost" onClick={() => setShowKey(!showKey)}>{showKey ? <EyeOff size={14} /> : <Eye size={14} />}</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddPlatformDialog({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("📦");
+  const [commPct, setCommPct] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) { toast.error("กรุณากรอกชื่อ"); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("delivery_platforms").insert({ name, icon, commission_pct: commPct });
+      if (error) throw error;
+      toast.success("เพิ่ม Platform แล้ว");
+      onAdded();
+    } catch (err: any) {
+      toast.error("เพิ่มไม่สำเร็จ: " + (err.message || ""));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-[400px]">
+        <DialogHeader><DialogTitle>เพิ่ม Delivery Platform</DialogTitle></DialogHeader>
+        <div className="space-y-3 mt-2">
+          <div>
+            <label className="text-[12px] font-semibold text-muted-foreground mb-1 block">ชื่อ</label>
+            <Input value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-muted-foreground mb-1 block">Icon (Emoji)</label>
+            <Input value={icon} onChange={e => setIcon(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-muted-foreground mb-1 block">Commission (%)</label>
+            <Input type="number" value={commPct} onChange={e => setCommPct(parseFloat(e.target.value) || 0)} />
+          </div>
+          <Button onClick={save} disabled={saving} className="w-full">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} เพิ่ม
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

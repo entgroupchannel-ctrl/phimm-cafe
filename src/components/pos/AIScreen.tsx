@@ -1,565 +1,344 @@
-import { useState } from "react";
-import { POSBadge } from "./POSBadge";
-import { POSStatCard } from "./POSStatCard";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-// ── Tab types ────────────────────────────────────────────────
-type AITab = "pricing" | "forecast" | "menu";
+type AITab = "analysis" | "forecast" | "recommend";
 
-const TABS: { key: AITab; label: string }[] = [
-  { key: "pricing",  label: "💰 Dynamic Pricing"  },
-  { key: "forecast", label: "📈 Sales Forecast"   },
-  { key: "menu",     label: "🧠 AI เมนู"          },
-];
-
-// ════════════════════════════════════════════════════════════
-// FEATURE 1: Dynamic Pricing Engine
-// ════════════════════════════════════════════════════════════
-const BASE_MENUS = [
-  { name: "ต้มยำกุ้ง",        base: 159, img: "🍲", cat: "ร้อน"    },
-  { name: "ผัดไทย",           base: 79,  img: "🍜", cat: "ร้อน"    },
-  { name: "ส้มตำ",             base: 69,  img: "🥗", cat: "เย็น"    },
-  { name: "ชาเย็น",           base: 45,  img: "🧋", cat: "เย็น"    },
-  { name: "ข้าวเหนียวมะม่วง", base: 89,  img: "🥭", cat: "ของหวาน" },
-  { name: "กาแฟเย็น",         base: 55,  img: "☕", cat: "เย็น"    },
-];
-
-function getPriceAdj(menu: { name: string; base: number; cat: string }, hour: number, weather: string, event: string) {
-  let adj = 0;
-  const reasons: string[] = [];
-
-  if (hour >= 11 && hour <= 13)       { adj += 10; reasons.push("🕐 Lunch Rush +10%");       }
-  else if (hour >= 17 && hour <= 19)  { adj += 15; reasons.push("🕐 Dinner Peak +15%");       }
-  else if (hour >= 14 && hour <= 16)  { adj -= 15; reasons.push("🕐 Off-peak ลด 15%");        }
-  else if (hour >= 20)                 { adj -= 20; reasons.push("🕐 ใกล้ปิดร้าน ลด 20%");    }
-
-  if (weather === "rainy" && menu.cat === "ร้อน")  { adj += 12; reasons.push("🌧 ฝนตก → อาหารร้อน +12%");    }
-  if (weather === "rainy" && menu.cat === "เย็น")  { adj -= 10; reasons.push("🌧 ฝนตก → เครื่องดื่มเย็น -10%"); }
-  if (weather === "hot"   && menu.cat === "เย็น")  { adj += 15; reasons.push("☀️ ร้อนจัด → เครื่องดื่มเย็น +15%"); }
-
-  if (event === "concert")  { adj += 20; reasons.push("🎵 คอนเสิร์ตใกล้ร้าน +20%"); }
-  if (event === "holiday")  { adj += 10; reasons.push("🎉 วันหยุดยาว +10%");         }
-
-  return { adj, reasons, newPrice: Math.round(menu.base * (1 + adj / 100)) };
+interface MenuItemData {
+  id: string; name: string; emoji: string | null; price: number; cost: number | null;
+  is_popular: boolean | null; category_id: string | null;
+}
+interface OrderData {
+  id: string; total: number | null; paid_at: string | null; channel: string | null;
+  payment_method: string | null; guest_count: number | null;
+}
+interface OrderItemData {
+  menu_item_id: string; name: string; price: number; qty: number; order_id: string;
 }
 
-function DynamicPricing() {
-  const [hour, setHour]       = useState(12);
-  const [weather, setWeather] = useState("sunny");
-  const [event, setEvent]     = useState("none");
+export function AIScreen() {
+  const [tab, setTab] = useState<AITab>("analysis");
+  const [loading, setLoading] = useState(true);
+  const [menuItems, setMenuItems] = useState<MenuItemData[]>([]);
+  const [orders, setOrders] = useState<OrderData[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItemData[]>([]);
 
-  const avgAdj = Math.round(
-    BASE_MENUS.reduce((s, m) => s + getPriceAdj(m, hour, weather, event).adj, 0) / BASE_MENUS.length
-  );
+  useEffect(() => { fetchData(); }, []);
 
-  return (
-    <div className="space-y-4">
-      <div className="text-[13px] text-muted-foreground">
-        AI ปรับราคาเมนูอัตโนมัติตามเวลา สภาพอากาศ และอีเวนต์ — เพิ่มกำไรสูงสุดโดยไม่ต้องตั้งค่าเอง
-      </div>
+  const fetchData = async () => {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card space-y-4">
-        {/* Time slider */}
-        <div>
-          <div className="text-[12px] font-semibold text-muted-foreground mb-2">
-            🕐 เวลา: <span className="font-mono text-[17px] font-bold text-accent tabular-nums">{hour}:00</span>
-          </div>
-          <input type="range" min={9} max={22} value={hour}
-            onChange={(e) => setHour(+e.target.value)}
-            className="w-full accent-primary h-1.5 cursor-pointer" />
-          <div className="flex justify-between text-[10px] text-muted-foreground/60 mt-1">
-            <span>09:00</span><span>12:00 Lunch</span><span>15:00</span><span>18:00 Dinner</span><span>22:00</span>
-          </div>
-        </div>
+      const [menuRes, ordersRes] = await Promise.all([
+        supabase.from("menu_items").select("id, name, emoji, price, cost, is_popular, category_id"),
+        supabase.from("orders").select("id, total, paid_at, channel, payment_method, guest_count")
+          .eq("status", "paid").gte("paid_at", thirtyDaysAgo.toISOString()),
+      ]);
 
-        <div className="flex gap-6 flex-wrap">
-          {/* Weather */}
-          <div>
-            <div className="text-[12px] font-semibold text-muted-foreground mb-2">🌤 สภาพอากาศ</div>
-            <div className="flex gap-2">
-              {[{ k: "sunny", l: "☀️ แดด" }, { k: "rainy", l: "🌧 ฝน" }, { k: "hot", l: "🔥 ร้อนจัด" }].map((w) => (
-                <button key={w.k} onClick={() => setWeather(w.k)}
-                  className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors",
-                    weather === w.k ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground")}>
-                  {w.l}
-                </button>
-              ))}
-            </div>
-          </div>
+      if (menuRes.error) throw menuRes.error;
+      if (ordersRes.error) throw ordersRes.error;
 
-          {/* Event */}
-          <div>
-            <div className="text-[12px] font-semibold text-muted-foreground mb-2">🎉 อีเวนต์ใกล้ร้าน</div>
-            <div className="flex gap-2">
-              {[{ k: "none", l: "ไม่มี" }, { k: "concert", l: "🎵 คอนเสิร์ต" }, { k: "holiday", l: "🎉 วันหยุด" }].map((e) => (
-                <button key={e.k} onClick={() => setEvent(e.k)}
-                  className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors",
-                    event === e.k ? "border-warning/50 bg-warning/10 text-warning" : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground")}>
-                  {e.l}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      const orderIds = (ordersRes.data || []).map(o => o.id);
+      let allItems: OrderItemData[] = [];
+      // Fetch in chunks of 200 to avoid URL length limits
+      for (let i = 0; i < orderIds.length; i += 200) {
+        const chunk = orderIds.slice(i, i + 200);
+        const { data, error } = await supabase.from("order_items")
+          .select("menu_item_id, name, price, qty, order_id")
+          .in("order_id", chunk);
+        if (error) throw error;
+        allItems = allItems.concat(data || []);
+      }
 
-      {/* Price Cards */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
-        {BASE_MENUS.map((menu) => {
-          const { adj, reasons, newPrice } = getPriceAdj(menu, hour, weather, event);
-          const isUp   = adj > 0;
-          const isDown = adj < 0;
-          return (
-            <div key={menu.name} className={cn(
-              "bg-card border rounded-2xl p-4 relative overflow-hidden shadow-card transition-all",
-              Math.abs(adj) >= 15 ? "border-primary/30" : "border-border"
-            )}>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[34px]">{menu.img}</span>
-                <div>
-                  <div className="text-[14px] font-bold text-foreground">{menu.name}</div>
-                  <POSBadge color="muted" className="text-[10px]">{menu.cat}</POSBadge>
-                </div>
-              </div>
+      setMenuItems(menuRes.data || []);
+      setOrders(ordersRes.data || []);
+      setOrderItems(allItems);
+    } catch (err: any) {
+      toast.error("โหลดข้อมูลไม่สำเร็จ: " + (err.message || ""));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-              <div className="flex items-baseline gap-2 mb-2">
-                {adj !== 0 && (
-                  <span className="font-mono text-[12px] text-muted-foreground line-through">฿{menu.base}</span>
-                )}
-                <span className={cn(
-                  "font-mono text-[26px] font-extrabold tabular-nums",
-                  isUp ? "text-warning" : isDown ? "text-success" : "text-foreground"
-                )}>฿{newPrice}</span>
-                {adj !== 0 && (
-                  <POSBadge color={isUp ? "warning" : "success"} glow>
-                    {isUp ? "▲" : "▼"} {Math.abs(adj)}%
-                  </POSBadge>
-                )}
-              </div>
+  // Computed data
+  const topSelling = useMemo(() => {
+    const map: Record<string, { name: string; qty: number; revenue: number }> = {};
+    orderItems.forEach(oi => {
+      if (!map[oi.menu_item_id]) map[oi.menu_item_id] = { name: oi.name, qty: 0, revenue: 0 };
+      map[oi.menu_item_id].qty += oi.qty;
+      map[oi.menu_item_id].revenue += oi.price * oi.qty;
+    });
+    return Object.values(map).sort((a, b) => b.qty - a.qty);
+  }, [orderItems]);
 
-              <div className="border-t border-border pt-2 space-y-0.5">
-                {reasons.length > 0
-                  ? reasons.map((r, i) => <div key={i} className="text-[11px] text-muted-foreground leading-relaxed">{r}</div>)
-                  : <div className="text-[11px] text-muted-foreground/60">ราคาปกติ — ไม่มีปัจจัยกระทบ</div>
-                }
-              </div>
-            </div>
-          );
-        })}
-      </div>
+  const marginData = useMemo(() => {
+    return menuItems
+      .filter(m => m.cost && m.cost > 0)
+      .map(m => ({ name: m.name, emoji: m.emoji, price: m.price, cost: m.cost!, margin: Math.round((m.price - m.cost!) / m.price * 100) }))
+      .sort((a, b) => b.margin - a.margin);
+  }, [menuItems]);
 
-      {/* Revenue impact */}
-      <div className="bg-card border border-primary/20 rounded-2xl p-4 shadow-card flex items-center gap-5">
-        <span className="text-[36px]">📊</span>
-        <div className="flex-1">
-          <div className="text-[13px] font-bold text-foreground mb-0.5">ผลกระทบต่อรายได้ (จำลอง)</div>
-          <div className="text-[12px] text-muted-foreground">
-            เวลา {hour}:00 · อากาศ {weather === "rainy" ? "ฝน" : weather === "hot" ? "ร้อนจัด" : "แดด"} · อีเวนต์ {event === "none" ? "ไม่มี" : event === "concert" ? "คอนเสิร์ต" : "วันหยุด"}
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-[11px] text-muted-foreground">รายได้เพิ่มขึ้น (ประมาณ)</div>
-          <div className={cn(
-            "font-mono text-[28px] font-extrabold tabular-nums",
-            avgAdj >= 0 ? "text-success" : "text-danger"
-          )}>
-            {avgAdj >= 0 ? "+" : ""}{Math.max(-30, avgAdj)}%
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+  const dailyRevenue = useMemo(() => {
+    const map: Record<string, number> = {};
+    orders.forEach(o => {
+      if (o.paid_at && o.total) {
+        const day = o.paid_at.slice(0, 10);
+        map[day] = (map[day] || 0) + (o.total || 0);
+      }
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([date, revenue]) => ({
+      date: date.slice(5), revenue: Math.round(revenue),
+    }));
+  }, [orders]);
 
-// ════════════════════════════════════════════════════════════
-// FEATURE 2: Sales Forecasting
-// ════════════════════════════════════════════════════════════
-const ACTUAL   = [28400, 31200, 26800, 35600, 42100, 38900, 29500];
-const FORECAST = [31000, 33500, 28200, 37800, 44500, 41200, 30800, 32400, 35100, 29900, 38200, 45800, 42500, 31500];
-const DAYS     = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
+  const dowPattern = useMemo(() => {
+    const dowNames = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+    const map: Record<number, { total: number; count: number }> = {};
+    orders.forEach(o => {
+      if (o.paid_at && o.total) {
+        const dow = new Date(o.paid_at).getDay();
+        if (!map[dow]) map[dow] = { total: 0, count: 0 };
+        map[dow].total += o.total;
+        map[dow].count += 1;
+      }
+    });
+    return Array.from({ length: 7 }, (_, i) => ({
+      day: dowNames[i],
+      avg: map[i] ? Math.round(map[i].total / Math.max(1, Math.ceil(map[i].count / 4))) : 0,
+    }));
+  }, [orders]);
 
-const STAFF_REC = [
-  { day: "จ.",  staff: 3, reason: "ยอดปกติ",        high: false },
-  { day: "อ.",  staff: 3, reason: "ยอดปกติ",        high: false },
-  { day: "พ.",  staff: 2, reason: "ยอดต่ำ — ลดคน", high: false },
-  { day: "พฤ.", staff: 4, reason: "ยอดสูง — เพิ่มคน", high: true },
-  { day: "ศ.",  staff: 5, reason: "Peak! +2 คน",     high: true },
-  { day: "ส.",  staff: 4, reason: "ยอดสูง",          high: true },
-  { day: "อา.", staff: 3, reason: "ยอดปกติ",         high: false },
-];
+  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const avgDaily = dailyRevenue.length > 0 ? Math.round(totalRevenue / dailyRevenue.length) : 0;
+  const bestDay = dailyRevenue.reduce((best, d) => d.revenue > (best?.revenue || 0) ? d : best, dailyRevenue[0]);
 
-const STOCK_PRED = [
-  { name: "กุ้ง",       current: 5.2, needed: 8.5, unit: "kg",    urgent: true  },
-  { name: "เส้นผัดไทย", current: 3.0, needed: 6.0, unit: "kg",    urgent: true  },
-  { name: "ไข่ไก่",    current: 120, needed: 85,  unit: "ฟอง",   urgent: false },
-  { name: "กะทิ",       current: 1.5, needed: 4.0, unit: "ลิตร", urgent: true  },
-  { name: "ข้าวสาร",   current: 20,  needed: 12,  unit: "kg",    urgent: false },
-];
+  // Forecast: next 7 days based on DOW averages
+  const forecast = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i + 1);
+      const dow = d.getDay();
+      return {
+        date: `${d.getMonth() + 1}/${d.getDate()}`,
+        predicted: dowPattern[dow]?.avg || avgDaily,
+      };
+    });
+  }, [dowPattern, avgDaily]);
 
-function SalesForecast() {
-  const [days, setDays] = useState(7);
+  // Recommendations
+  const lowMargin = marginData.filter(m => m.margin < 40);
+  const lowSales = useMemo(() => {
+    const salesMap: Record<string, number> = {};
+    orderItems.forEach(oi => { salesMap[oi.menu_item_id] = (salesMap[oi.menu_item_id] || 0) + oi.qty; });
+    return menuItems
+      .filter(m => !m.is_popular && (salesMap[m.id] || 0) < 14) // less than 1/day avg
+      .map(m => ({ ...m, totalQty: salesMap[m.id] || 0 }));
+  }, [menuItems, orderItems]);
 
-  const displayForecast = days === 7 ? FORECAST.slice(0, 7) : FORECAST;
-  const maxVal = Math.max(...ACTUAL, ...displayForecast);
+  const TABS: { key: AITab; label: string }[] = [
+    { key: "analysis", label: "📊 Menu Analysis" },
+    { key: "forecast", label: "📈 Sales Forecast" },
+    { key: "recommend", label: "🧠 AI Recommendation" },
+  ];
+
+  if (loading) {
+    return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="text-[13px] text-muted-foreground">
-        พยากรณ์ยอดขายล่วงหน้า 7–14 วัน พร้อมแนะนำจำนวนพนักงานและวัตถุดิบที่ต้องเตรียม
-      </div>
+    <div className="flex-1 p-6 overflow-y-auto scrollbar-hide bg-background">
+      <div className="max-w-[1000px] mx-auto space-y-4">
+        <div className="text-[18px] font-bold text-foreground">🤖 AI Analytics</div>
 
-      {/* Stat cards */}
-      <div className="flex gap-3 flex-wrap">
-        <POSStatCard icon="📈" label="Accuracy" value="94.2%" sub="AI model v2.1"       color="success" />
-        <POSStatCard icon="📊" label="ยอดพยากรณ์ (7 วัน)" value="฿231k" sub="+8% จากสัปดาห์นี้" color="primary" trend={8} />
-        <POSStatCard icon="🧑‍💼" label="ประหยัดค่าแรง"  value="฿4,200" sub="ต่อสัปดาห์"       color="accent"  />
-        <POSStatCard icon="📦" label="ต้องสั่งด่วน"    value="3 รายการ" sub="ภายในพรุ่งนี้"   color="warning" />
-      </div>
-
-      {/* Chart */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <div className="text-[14px] font-bold text-foreground">กราฟพยากรณ์ยอดขาย</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">แถบทึบ = ยอดจริง · แถบประ = AI พยากรณ์</div>
-          </div>
-          <div className="flex gap-1.5">
-            {[7, 14].map((d) => (
-              <button key={d} onClick={() => setDays(d)}
-                className={cn("px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors",
-                  days === d ? "border-primary/40 bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-border-light")}>
-                {d} วัน
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-end gap-1.5 pb-5" style={{ height: 180 }}>
-          {/* Actual bars */}
-          {ACTUAL.map((v, i) => (
-            <div key={`a${i}`} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[9px] text-muted-foreground font-mono">{(v / 1000).toFixed(1)}k</span>
-              <div className="w-full max-w-7 rounded-t-md rounded-b-sm gradient-primary transition-all"
-                style={{ height: `${(v / maxVal) * 110}px`, boxShadow: "var(--shadow-primary)" }} />
-              <span className="text-[10px] text-foreground font-semibold">{DAYS[i]}</span>
-            </div>
-          ))}
-
-          {/* Divider */}
-          <div className="w-px self-stretch mx-1 opacity-40"
-            style={{ backgroundImage: "repeating-linear-gradient(to bottom, hsl(var(--accent)) 0 4px, transparent 4px 8px)" }} />
-
-          {/* Forecast bars */}
-          {displayForecast.map((v, i) => (
-            <div key={`f${i}`} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[9px] text-accent font-mono">{(v / 1000).toFixed(1)}k</span>
-              <div className="w-full max-w-7 rounded-t-md rounded-b-sm border border-dashed border-accent/60 bg-accent/10 transition-all"
-                style={{ height: `${(v / maxVal) * 110}px` }} />
-              <span className="text-[10px] text-accent font-semibold">{DAYS[i + (days === 14 ? 0 : 7)]}</span>
-            </div>
+        <div className="flex gap-1.5">
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={cn("px-4 py-2 rounded-xl text-[13px] font-bold border transition-all",
+                tab === t.key ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+              {t.label}
+            </button>
           ))}
         </div>
 
-        {/* Legend */}
-        <div className="flex gap-4 justify-center text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm gradient-primary inline-block" />ยอดจริง
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm border border-dashed border-accent/60 bg-accent/10 inline-block" />AI พยากรณ์
-          </span>
-        </div>
-      </div>
+        {orders.length === 0 && (
+          <div className="bg-card border border-warning/30 rounded-2xl p-6 text-center">
+            <div className="text-[32px] mb-2">📭</div>
+            <div className="text-[14px] font-bold text-foreground">ยังไม่มีข้อมูลออเดอร์ 30 วันล่าสุด</div>
+            <div className="text-[12px] text-muted-foreground mt-1">เมื่อมีการชำระเงิน ข้อมูลจะแสดงที่นี่อัตโนมัติ</div>
+          </div>
+        )}
 
-      {/* Staff + Stock */}
-      <div className="flex gap-4">
-        {/* Staff */}
-        <div className="flex-1 bg-card border border-border rounded-2xl p-5 shadow-card">
-          <div className="text-[14px] font-bold text-foreground mb-3 flex items-center gap-1.5">
-            🧑‍💼 <span className="text-gradient-primary">AI แนะนำพนักงาน</span>
-          </div>
-          <div className="divide-y divide-border/40">
-            {STAFF_REC.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5">
-                <span className={cn("text-[12px] font-bold w-8", s.high ? "text-warning" : "text-foreground")}>{s.day}</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: s.staff }).map((_, j) => (
-                    <div key={j} className={cn(
-                      "w-6 h-6 rounded-lg flex items-center justify-center text-[11px] border",
-                      j < 3 ? "bg-primary/10 border-primary/25 text-primary" : "bg-warning/10 border-warning/25 text-warning"
-                    )}>👤</div>
-                  ))}
-                </div>
-                <span className="text-[11px] text-muted-foreground flex-1">{s.reason}</span>
-                <span className={cn("font-mono text-[13px] font-bold tabular-nums", s.high ? "text-warning" : "text-foreground")}>
-                  {s.staff} คน
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 px-3 py-2.5 rounded-xl bg-success/5 border border-success/20 text-[12px] text-muted-foreground">
-            💡 ประหยัดค่าแรงได้ ~฿4,200/สัปดาห์ จากการจัดคนตาม AI
-          </div>
-        </div>
-
-        {/* Stock */}
-        <div className="flex-1 bg-card border border-border rounded-2xl p-5 shadow-card">
-          <div className="text-[14px] font-bold text-foreground mb-3 flex items-center gap-1.5">
-            📦 <span className="text-gradient-primary">AI แนะนำสั่งซื้อวัตถุดิบ</span>
-          </div>
-          <div className="divide-y divide-border/40">
-            {STOCK_PRED.map((s, i) => {
-              const pct    = Math.min(100, (s.current / s.needed) * 100);
-              const enough = s.current >= s.needed;
-              return (
-                <div key={i} className="py-2.5">
-                  <div className="flex justify-between mb-1.5">
-                    <span className="text-[13px] font-semibold text-foreground">{s.name}</span>
-                    <span className={cn("text-[11px] font-mono font-bold tabular-nums", enough ? "text-success" : "text-danger")}>
-                      {s.current}{s.unit} / ต้องการ {s.needed}{s.unit}
-                    </span>
+        {tab === "analysis" && orders.length > 0 && (
+          <div className="space-y-4">
+            {/* Top Selling */}
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="text-[14px] font-bold text-foreground mb-3">🏆 Top 10 ขายดี (30 วัน)</div>
+              <div className="space-y-2">
+                {topSelling.slice(0, 10).map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="w-6 text-[13px] font-bold text-muted-foreground text-right">#{i + 1}</span>
+                    <span className="flex-1 text-[13px] font-medium text-foreground">{item.name}</span>
+                    <span className="font-mono text-[13px] font-bold text-foreground">{item.qty} ชิ้น</span>
+                    <span className="font-mono text-[13px] font-bold text-accent w-[90px] text-right">฿{item.revenue.toLocaleString()}</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                    <div className={cn("h-full rounded-full transition-all duration-500",
-                      enough ? "bg-success" : pct < 50 ? "bg-danger" : "bg-warning")}
-                      style={{ width: `${pct}%` }} />
-                  </div>
-                  {s.urgent && (
-                    <div className="text-[11px] text-danger mt-1 font-semibold">
-                      ⚠️ ต้องสั่งเพิ่ม {(s.needed - s.current).toFixed(1)} {s.unit} ภายในพรุ่งนี้
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <button className="w-full mt-3 py-2.5 rounded-xl gradient-primary text-white text-[13px] font-bold shadow-primary hover:shadow-primary-lg transition-shadow">
-            📝 สร้างใบสั่งซื้ออัตโนมัติ (PO)
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════
-// FEATURE 3: AI Dynamic Menu
-// ════════════════════════════════════════════════════════════
-type CustomerKey = "new" | "regular" | "health" | "vip";
-
-const CUSTOMERS: Record<CustomerKey, { name: string; visits: number; pref: string[]; allergies: string[]; budget: string }> = {
-  new:     { name: "ลูกค้าใหม่",    visits: 0,  pref: [],                                    allergies: [],              budget: "กลาง" },
-  regular: { name: "คุณสมชาย",      visits: 12, pref: ["ผัดไทย", "ต้มยำกุ้ง", "ชาเย็น"],     allergies: ["ถั่ว"],        budget: "สูง"  },
-  health:  { name: "คุณนภา",        visits: 8,  pref: ["ส้มตำ", "ยำ"],                        allergies: ["กลูเตน", "นม"], budget: "กลาง" },
-  vip:     { name: "คุณแพร (VIP)",  visits: 22, pref: ["แกงเขียวหวาน", "ข้าวเหนียวมะม่วง"],  allergies: [],              budget: "สูง"  },
-};
-
-type RecItem = { name: string; price: number; reason: string; confidence: number; img: string; tag: string };
-
-function getMenuRec(customer: CustomerKey, mealTime: string): RecItem[] {
-  if (customer === "regular") return [
-    { name: "ผัดไทยกุ้งสด",     price: 99,  reason: "📊 สั่งบ่อยสุด (8/12 ครั้ง)",      confidence: 96, img: "🍜", tag: "เมนูโปรด"   },
-    { name: "ต้มยำกุ้งน้ำข้น",  price: 179, reason: "🔥 เมนูใหม่ คล้ายที่ชอบ",          confidence: 88, img: "🍲", tag: "แนะนำใหม่"  },
-    { name: "ชาเย็นพิเศษ",       price: 55,  reason: "🧋 สั่งทุกครั้ง — จับคู่ดี",       confidence: 94, img: "🧋", tag: "จับคู่"     },
-    { name: "ข้าวเหนียวมะม่วง",  price: 89,  reason: "🎯 Upsell — 67% สั่งเพิ่ม",       confidence: 72, img: "🥭", tag: "Upsell"     },
-  ];
-  if (customer === "health") return [
-    { name: "ส้มตำ (ไม่ใส่ถั่ว)", price: 69,  reason: "💚 ปลอดกลูเตน + ปลอดนม",          confidence: 92, img: "🥗", tag: "Safe"       },
-    { name: "ยำวุ้นเส้นทะเล",    price: 99,  reason: "🌿 Low-cal ไม่มีนม/กลูเตน",        confidence: 87, img: "🥬", tag: "Healthy"    },
-    { name: "น้ำมะนาวสด",         price: 35,  reason: "🍋 เครื่องดื่ม safe ไม่มีนม",     confidence: 90, img: "🍋", tag: "Safe"       },
-    { name: "ผลไม้รวม",           price: 59,  reason: "🎯 ของหวาน healthy",               confidence: 78, img: "🍇", tag: "Upsell"     },
-  ];
-  if (customer === "vip") return [
-    { name: "แกงเขียวหวานพรีเมียม", price: 159, reason: "👑 VIP เมนูพิเศษเฉพาะคุณ",       confidence: 95, img: "🍛", tag: "VIP Only"   },
-    { name: "เป็ดย่างน้ำผึ้ง",    price: 249, reason: "🔥 Chef's Special วันนี้",          confidence: 82, img: "🦆", tag: "พิเศษ"      },
-    { name: "ข้าวเหนียวมะม่วง",   price: 89,  reason: "📊 สั่งทุก 2 ครั้ง",               confidence: 91, img: "🥭", tag: "โปรด"       },
-    { name: "ไวน์แก้ว",           price: 190, reason: "🍷 VIP pairing — กำไรสูง",          confidence: 68, img: "🍷", tag: "High Margin" },
-  ];
-  // new customer
-  if (mealTime === "lunch") return [
-    { name: "ข้าวผัดกุ้ง",        price: 89,  reason: "🏆 เมนูขายดีอันดับ 1 ช่วงเที่ยง", confidence: 88, img: "🍛", tag: "Best Seller" },
-    { name: "ข้าวมันไก่",         price: 65,  reason: "💰 คุ้มค่า ราคาเข้าถึงง่าย",       confidence: 85, img: "🍗", tag: "คุ้มค่า"    },
-    { name: "ชาเย็น",             price: 45,  reason: "🧋 เครื่องดื่มยอดนิยมคู่อาหาร",   confidence: 82, img: "🧋", tag: "จับคู่"     },
-    { name: "บัวลอย",             price: 45,  reason: "🎯 ของหวานยอดนิยม ช่วงเที่ยง",    confidence: 70, img: "🍡", tag: "Upsell"     },
-  ];
-  return [
-    { name: "ต้มยำกุ้ง",          price: 159, reason: "🌙 ยอดนิยมอันดับ 1 ช่วงเย็น",     confidence: 90, img: "🍲", tag: "Best Seller" },
-    { name: "ผัดไทย",             price: 79,  reason: "🔥 Trending บน Social",             confidence: 84, img: "🍜", tag: "Trending"   },
-    { name: "กาแฟเย็น",           price: 55,  reason: "☕ เครื่องดื่มยอดนิยม ช่วงค่ำ",   confidence: 78, img: "☕", tag: "จับคู่"     },
-    { name: "ข้าวเหนียวมะม่วง",   price: 89,  reason: "🥭 Season มะม่วง! ยอดพุ่ง 2x",    confidence: 86, img: "🥭", tag: "Seasonal"   },
-  ];
-}
-
-const TAG_COLOR: Record<string, "primary" | "accent" | "success" | "warning" | "danger" | "muted"> = {
-  "เมนูโปรด":   "primary", "แนะนำใหม่": "accent",  "จับคู่":  "muted",
-  "Upsell":      "warning", "Safe":      "success", "Healthy": "success",
-  "VIP Only":    "danger",  "พิเศษ":     "danger",  "โปรด":    "primary",
-  "High Margin": "warning", "Best Seller":"danger", "คุ้มค่า": "success",
-  "Trending":    "accent",  "Seasonal":  "warning",
-};
-
-function AIDynamicMenu() {
-  const [customer, setCustomer] = useState<CustomerKey>("new");
-  const [mealTime, setMealTime] = useState("lunch");
-
-  const c    = CUSTOMERS[customer];
-  const recs = getMenuRec(customer, mealTime);
-
-  return (
-    <div className="space-y-4">
-      <div className="text-[13px] text-muted-foreground">
-        เมนูปรับเปลี่ยนตามโปรไฟล์ลูกค้า ประวัติสั่ง อาการแพ้ และเทรนด์ — เพิ่มยอดต่อบิลอัตโนมัติ
-      </div>
-
-      {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card space-y-4">
-        <div className="flex gap-6 flex-wrap">
-          <div>
-            <div className="text-[12px] font-semibold text-muted-foreground mb-2">👤 เลือกลูกค้า</div>
-            <div className="flex gap-2">
-              {([["new","🆕 ลูกค้าใหม่"],["regular","🔄 ขาประจำ"],["health","💚 แพ้อาหาร"],["vip","👑 VIP"]] as [CustomerKey, string][]).map(([k, l]) => (
-                <button key={k} onClick={() => setCustomer(k)}
-                  className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors",
-                    customer === k ? "border-primary/40 bg-primary/8 text-primary" : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground")}>
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-          {customer === "new" && (
-            <div>
-              <div className="text-[12px] font-semibold text-muted-foreground mb-2">🕐 มื้ออาหาร</div>
-              <div className="flex gap-2">
-                {[["lunch","🌞 เที่ยง"],["dinner","🌙 เย็น"]].map(([k, l]) => (
-                  <button key={k} onClick={() => setMealTime(k)}
-                    className={cn("px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors",
-                      mealTime === k ? "border-accent/40 bg-accent/8 text-accent" : "border-border bg-card text-muted-foreground hover:border-border-light hover:text-foreground")}>
-                    {l}
-                  </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Customer profile */}
-        {customer !== "new" && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-surface-alt rounded-xl border border-border">
-            <div className="w-11 h-11 rounded-xl gradient-primary flex items-center justify-center text-white font-extrabold text-[16px] shadow-primary shrink-0">
-              {c.name.charAt(3)}
+            {/* Bottom Selling */}
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="text-[14px] font-bold text-foreground mb-3">📉 ขายน้อย (30 วัน)</div>
+              <div className="space-y-2">
+                {topSelling.slice(-5).reverse().map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="flex-1 text-[13px] font-medium text-foreground">{item.name}</span>
+                    <span className="font-mono text-[13px] text-muted-foreground">{item.qty} ชิ้น</span>
+                    <span className="font-mono text-[13px] text-muted-foreground w-[90px] text-right">฿{item.revenue.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex-1">
-              <div className="text-[14px] font-bold text-foreground">{c.name}</div>
-              <div className="text-[12px] text-muted-foreground">มา {c.visits} ครั้ง · เมนูโปรด: {c.pref.join(", ")}</div>
-            </div>
-            {c.allergies.length > 0 && (
-              <div>
-                <div className="text-[11px] text-danger font-semibold mb-1">⚠️ แพ้อาหาร:</div>
-                <div className="flex gap-1">
-                  {c.allergies.map((a) => <POSBadge key={a} color="danger">{a}</POSBadge>)}
+
+            {/* Margin Analysis */}
+            {marginData.length > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                <div className="text-[14px] font-bold text-foreground mb-3">💰 Margin Analysis</div>
+                <div className="space-y-2">
+                  {marginData.slice(0, 10).map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="flex-1 text-[13px] font-medium text-foreground">{item.emoji || "🍽"} {item.name}</span>
+                      <span className="font-mono text-[12px] text-muted-foreground">ต้นทุน ฿{item.cost}</span>
+                      <span className="font-mono text-[12px] text-muted-foreground">ขาย ฿{item.price}</span>
+                      <span className={cn("font-mono text-[13px] font-bold w-[60px] text-right",
+                        item.margin >= 60 ? "text-primary" : item.margin >= 40 ? "text-foreground" : "text-destructive")}>
+                        {item.margin}%
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
         )}
-      </div>
 
-      {/* Recommendation cards */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
-        {recs.map((r, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-4 shadow-card relative overflow-hidden flex flex-col">
-            <div className="absolute top-3 right-3">
-              <POSBadge color={TAG_COLOR[r.tag] ?? "primary"} glow>{r.tag}</POSBadge>
-            </div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-[36px]">{r.img}</span>
-              <div>
-                <div className="text-[14px] font-bold text-foreground">{r.name}</div>
-                <div className="font-mono text-[20px] font-extrabold text-accent tabular-nums">฿{r.price}</div>
+        {tab === "forecast" && orders.length > 0 && (
+          <div className="space-y-4">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+                <div className="text-[22px] mb-1">📊</div>
+                <div className="font-mono text-[22px] font-extrabold text-foreground">฿{avgDaily.toLocaleString()}</div>
+                <div className="text-[12px] font-semibold text-foreground">รายได้เฉลี่ย/วัน</div>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+                <div className="text-[22px] mb-1">🏆</div>
+                <div className="font-mono text-[22px] font-extrabold text-foreground">฿{(bestDay?.revenue || 0).toLocaleString()}</div>
+                <div className="text-[12px] font-semibold text-foreground">วันที่ดีที่สุด ({bestDay?.date || "—"})</div>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+                <div className="text-[22px] mb-1">📦</div>
+                <div className="font-mono text-[22px] font-extrabold text-foreground">{orders.length}</div>
+                <div className="text-[12px] font-semibold text-foreground">ออเดอร์ทั้งหมด (30 วัน)</div>
               </div>
             </div>
-            <div className="text-[12px] text-muted-foreground mb-3 flex-1 leading-relaxed">{r.reason}</div>
-            {/* Confidence */}
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-muted-foreground">AI ความมั่นใจ</span>
-                <span className={cn("font-mono font-bold tabular-nums",
-                  r.confidence > 85 ? "text-success" : r.confidence > 70 ? "text-warning" : "text-muted-foreground")}>
-                  {r.confidence}%
-                </span>
+
+            {/* Daily Revenue Chart */}
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="text-[14px] font-bold text-foreground mb-3">📈 รายได้รายวัน (30 วัน)</div>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={dailyRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip formatter={(v: number) => [`฿${v.toLocaleString()}`, "รายได้"]} />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* DOW Pattern */}
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="text-[14px] font-bold text-foreground mb-3">📅 รายได้เฉลี่ยตามวันในสัปดาห์</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={dowPattern}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip formatter={(v: number) => [`฿${v.toLocaleString()}`, "เฉลี่ย"]} />
+                  <Bar dataKey="avg" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Forecast */}
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="text-[14px] font-bold text-foreground mb-3">🔮 พยากรณ์ 7 วันข้างหน้า (ประมาณการจาก DOW pattern)</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={forecast}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip formatter={(v: number) => [`฿${v.toLocaleString()}`, "คาดการณ์"]} />
+                  <Bar dataKey="predicted" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} opacity={0.7} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {tab === "recommend" && (
+          <div className="space-y-4">
+            {lowMargin.length > 0 && (
+              <div className="bg-card border border-warning/30 rounded-2xl p-5 shadow-sm">
+                <div className="text-[14px] font-bold text-foreground mb-3">⚠️ Margin ต่ำ — พิจารณาปรับราคา</div>
+                <div className="text-[12px] text-muted-foreground mb-3">เมนูที่ต้นทุนสูงกว่า 40% ของราคาขาย</div>
+                <div className="space-y-2">
+                  {lowMargin.map((m, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-[13px] font-medium text-foreground flex-1">{m.emoji || "🍽"} {m.name}</span>
+                      <span className="font-mono text-[12px] text-muted-foreground">ขาย ฿{m.price} / ต้นทุน ฿{m.cost}</span>
+                      <span className="font-mono text-[13px] font-bold text-destructive">{m.margin}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                <div className={cn("h-full rounded-full transition-all duration-500",
-                  r.confidence > 85 ? "bg-success" : r.confidence > 70 ? "bg-warning" : "bg-muted-foreground/40")}
-                  style={{ width: `${r.confidence}%` }} />
+            )}
+
+            {lowSales.length > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                <div className="text-[14px] font-bold text-foreground mb-3">📉 ขายน้อย — พิจารณาถอดออก</div>
+                <div className="text-[12px] text-muted-foreground mb-3">เมนูที่ขายได้น้อยกว่า 1 ชิ้น/วัน ใน 14 วันที่ผ่านมา</div>
+                <div className="space-y-2">
+                  {lowSales.slice(0, 10).map((m, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-[13px] font-medium text-foreground flex-1">{m.emoji || "🍽"} {m.name}</span>
+                      <span className="font-mono text-[12px] text-muted-foreground">{m.totalQty} ชิ้น/30วัน</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-card border border-primary/20 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center gap-4">
+                <span className="text-[36px]">🤖</span>
+                <div className="flex-1">
+                  <div className="text-[14px] font-bold text-foreground">AI Analysis</div>
+                  <div className="text-[12px] text-muted-foreground">วิเคราะห์เชิงลึกด้วย AI จะพร้อมใช้เร็วๆ นี้</div>
+                </div>
+                <Button variant="outline" onClick={() => toast.info("🤖 AI analysis จะพร้อมใช้เร็วๆ นี้")}>
+                  🤖 Ask AI
+                </Button>
               </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Impact stats */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
-        <div className="text-[13px] font-bold text-muted-foreground mb-4">📊 ผลลัพธ์จากระบบ AI Personalization</div>
-        <div className="grid grid-cols-4 gap-4 text-center">
-          {[
-            { label: "ยอดต่อบิลเพิ่มขึ้น", value: "+23%",  icon: "💰", color: "text-success"  },
-            { label: "อัตราสั่ง Upsell",  value: "34%",   icon: "🎯", color: "text-warning"  },
-            { label: "ลดเมนูที่แพ้ 100%", value: "✅",    icon: "🛡️", color: "text-primary"  },
-            { label: "ความพึงพอใจลูกค้า", value: "4.8/5", icon: "⭐", color: "text-accent"   },
-          ].map((s, i) => (
-            <div key={i}>
-              <div className="text-[24px] mb-1">{s.icon}</div>
-              <div className={cn("font-mono text-[22px] font-extrabold tabular-nums", s.color)}>{s.value}</div>
-              <div className="text-[11px] text-muted-foreground">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════
-// MAIN AI SCREEN
-// ════════════════════════════════════════════════════════════
-export function AIScreen() {
-  const [tab, setTab] = useState<AITab>("pricing");
-
-  return (
-    <div className="flex-1 overflow-y-auto scrollbar-hide bg-background">
-      {/* Sub-header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="text-[16px] font-bold text-foreground flex items-center gap-2">
-              🤖 <span className="text-gradient-primary">AI Features</span>
-              <POSBadge color="primary" glow>Phase 3 Preview</POSBadge>
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">ฟีเจอร์ AI ที่คู่แข่งยังไม่มี — ตัวเปลี่ยนเกมสำหรับร้านอาหาร SME</div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1.5 bg-surface-alt rounded-xl p-1 border border-border">
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={cn("px-4 py-2 rounded-lg text-[12px] font-bold transition-all",
-                tab === t.key
-                  ? "gradient-primary text-white shadow-primary"
-                  : "text-muted-foreground hover:text-foreground")}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6">
-        {tab === "pricing"  && <DynamicPricing />}
-        {tab === "forecast" && <SalesForecast />}
-        {tab === "menu"     && <AIDynamicMenu />}
+        )}
       </div>
     </div>
   );
