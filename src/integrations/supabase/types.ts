@@ -2308,6 +2308,10 @@ export type Database = {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
       }
+      forecast_stock_demand: {
+        Args: { p_days?: number; p_stock_item_id: string }
+        Returns: Json
+      }
       generate_daily_summary: { Args: { p_date: string }; Returns: undefined }
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
       mark_station_item_done: { Args: { p_item_id: string }; Returns: Json }
