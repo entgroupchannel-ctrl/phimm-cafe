@@ -2317,6 +2317,7 @@ export type Database = {
       mark_station_item_done: { Args: { p_item_id: string }; Returns: Json }
       receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
       route_order_to_stations: { Args: { p_order_id: string }; Returns: Json }
+      run_stock_ai_analysis: { Args: never; Returns: Json }
       update_customer_tier: {
         Args: { p_customer_id: string }
         Returns: undefined
