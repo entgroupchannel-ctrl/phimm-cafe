@@ -655,11 +655,11 @@ export function StaffScreen() {
     { label: "👥 พนักงาน", key: "list" },
     { label: "📅 ตารางงาน", key: "schedule" },
     { label: "📊 สถิติเวลา", key: "stats" },
+    { label: "🏖️ การลา", key: "leave" },
   ];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      {/* Header */}
       <div className="px-5 py-3 border-b border-border bg-[hsl(var(--surface))] shrink-0">
         <h1 className="text-[15px] font-bold text-foreground">👥 จัดการพนักงาน</h1>
         <p className="text-[11px] text-muted-foreground">Staff Management</p>
@@ -677,12 +677,11 @@ export function StaffScreen() {
           ))}
         </div>
       </div>
-
-      {/* Content */}
       <div className="flex-1 overflow-y-auto scrollbar-hide p-5">
         {tab === 0 && <StaffListTab />}
         {tab === 1 && <ScheduleTab />}
         {tab === 2 && <WorkStatsTab />}
+        {tab === 3 && <LeaveTab />}
       </div>
     </div>
   );
