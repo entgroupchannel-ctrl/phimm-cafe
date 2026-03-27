@@ -405,7 +405,7 @@ export function KDSScreen() {
     const orderIds = [...new Set(items.map(i => i.order_id))];
     const { data: ordersData, error: ordersErr } = await supabase
       .from("orders")
-      .select("id, order_number, table_id, order_type, channel, tables(label)")
+      .select("id, order_number, table_id, order_type, channel, tables!orders_table_id_fkey(label)")
       .in("id", orderIds);
 
     if (ordersErr) {
