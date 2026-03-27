@@ -391,12 +391,16 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
             <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
               {filtered.map(item => {
                 const inCartQty = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+                const ss = stockStatus[item.id];
+                const isOut = ss?.isOut;
+                const isLow = ss?.isLow;
                 return (
-                  <button key={item.id} onClick={() => openCustomize(item)}
+                  <button key={item.id} onClick={() => !isOut && openCustomize(item)}
                     className={cn(
                       "relative flex flex-col items-start text-left p-3.5 rounded-2xl border transition-all duration-150 select-none active:scale-[0.97]",
                       "bg-[hsl(var(--surface))] shadow-[0_1px_3px_rgba(0,0,0,0.05),0_2px_8px_rgba(0,0,0,0.04)]",
-                      inCartQty > 0
+                      isOut && "opacity-50 cursor-not-allowed",
+                      inCartQty > 0 && !isOut
                         ? "border-primary/40 shadow-[0_0_0_2px_hsl(var(--primary)/0.15),0_4px_12px_rgba(0,0,0,0.06)]"
                         : "border-border hover:border-border-light hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
                     )}>
@@ -405,7 +409,17 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
                         {inCartQty}
                       </span>
                     )}
-                    {item.popular && (
+                    {isOut && (
+                      <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25 leading-none">
+                        ❌ หมด
+                      </span>
+                    )}
+                    {!isOut && isLow && (
+                      <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)] leading-none">
+                        ⚠️ ใกล้หมด
+                      </span>
+                    )}
+                    {!isOut && !isLow && item.popular && (
                       <span className="absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.25)] leading-none">
                         ยอดนิยม
                       </span>
