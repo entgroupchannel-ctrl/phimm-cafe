@@ -654,7 +654,7 @@ export function KDSScreen() {
         <div className="text-[48px] mb-4">👨‍🍳</div>
         <h1 className="text-[20px] font-black text-foreground mb-1">เลือกสถานีครัว</h1>
         <p className="text-[13px] text-muted-foreground mb-8">Select Kitchen Station</p>
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(dbStations.length + 2, 4)}, 1fr)` }}>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {dbStations.map(s => (
             <button key={s.id} onClick={() => { setActiveStationId(s.id); setKdsMode("station"); }}
               className="relative flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-border bg-card hover:shadow-[var(--shadow-card-hover)] hover:scale-[1.03] transition-all min-w-[140px]"

@@ -505,8 +505,8 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
         </div>
       </div>
 
-      {/* ─── RIGHT: Order panel ────────────────────────────────── */}
-      <div className="w-[340px] shrink-0 flex flex-col overflow-hidden min-h-0 bg-[hsl(var(--surface))] border-l border-border">
+      {/* ─── RIGHT: Order panel (desktop only) ───────────────── */}
+      <div className={cn("w-[340px] shrink-0 flex flex-col overflow-hidden min-h-0 bg-[hsl(var(--surface))] border-l border-border", isMobile && "hidden")}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -630,6 +630,19 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
           </div>
         </div>
       </div>
+
+      {/* ─── Mobile floating cart bar ─────────────────────────── */}
+      {isMobile && !mobileCartOpen && (
+        <button onClick={() => setMobileCartOpen(true)}
+          className="fixed bottom-16 left-3 right-3 z-40 flex items-center justify-between h-14 px-4 rounded-2xl bg-primary text-white shadow-[0_4px_20px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={18} />
+            <span className="text-[13px] font-bold">{totalQty} รายการ</span>
+          </div>
+          <span className="font-mono text-[16px] font-black tabular-nums">฿{grandTotal.toLocaleString()}.00</span>
+        </button>
+      )}
 
       {/* ─── Customization Modal ──────────────────────────────── */}
       <Dialog open={!!customizeItem} onOpenChange={open => { if (!open) setCustomizeItem(null); }}>
