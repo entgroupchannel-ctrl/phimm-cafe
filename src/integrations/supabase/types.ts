@@ -96,6 +96,33 @@ export type Database = {
           },
         ]
       }
+      allergen_types: {
+        Row: {
+          icon: string | null
+          id: string
+          name_en: string
+          name_th: string
+          severity: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          icon?: string | null
+          id?: string
+          name_en: string
+          name_th: string
+          severity?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          icon?: string | null
+          id?: string
+          name_en?: string
+          name_th?: string
+          severity?: string | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       customer_feedback: {
         Row: {
           comment: string | null
@@ -336,6 +363,36 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           webhook_secret?: string | null
+        }
+        Relationships: []
+      }
+      diet_tag_types: {
+        Row: {
+          color: string | null
+          icon: string | null
+          id: string
+          name_en: string
+          name_th: string
+          short_code: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          icon?: string | null
+          id?: string
+          name_en: string
+          name_th: string
+          short_code: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          icon?: string | null
+          id?: string
+          name_en?: string
+          name_th?: string
+          short_code?: string
+          sort_order?: number | null
         }
         Relationships: []
       }
@@ -719,6 +776,7 @@ export type Database = {
           calories: number | null
           carbs_g: number | null
           category_id: string | null
+          cholesterol_mg: number | null
           cost: number | null
           created_at: string | null
           description: string | null
@@ -729,14 +787,20 @@ export type Database = {
           health_score: number | null
           id: string
           image_url: string | null
+          ingredients_detail: Json | null
           is_available: boolean | null
           is_popular: boolean | null
           name: string
+          nutrition_published: boolean | null
           price: number
           protein_g: number | null
+          saturated_fat_g: number | null
+          serving_size: string | null
+          serving_unit: string | null
           sodium_mg: number | null
           sort_order: number | null
           station: string | null
+          sugar_g: number | null
           updated_at: string | null
         }
         Insert: {
@@ -744,6 +808,7 @@ export type Database = {
           calories?: number | null
           carbs_g?: number | null
           category_id?: string | null
+          cholesterol_mg?: number | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
@@ -754,14 +819,20 @@ export type Database = {
           health_score?: number | null
           id?: string
           image_url?: string | null
+          ingredients_detail?: Json | null
           is_available?: boolean | null
           is_popular?: boolean | null
           name: string
+          nutrition_published?: boolean | null
           price: number
           protein_g?: number | null
+          saturated_fat_g?: number | null
+          serving_size?: string | null
+          serving_unit?: string | null
           sodium_mg?: number | null
           sort_order?: number | null
           station?: string | null
+          sugar_g?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -769,6 +840,7 @@ export type Database = {
           calories?: number | null
           carbs_g?: number | null
           category_id?: string | null
+          cholesterol_mg?: number | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
@@ -779,14 +851,20 @@ export type Database = {
           health_score?: number | null
           id?: string
           image_url?: string | null
+          ingredients_detail?: Json | null
           is_available?: boolean | null
           is_popular?: boolean | null
           name?: string
+          nutrition_published?: boolean | null
           price?: number
           protein_g?: number | null
+          saturated_fat_g?: number | null
+          serving_size?: string | null
+          serving_unit?: string | null
           sodium_mg?: number | null
           sort_order?: number | null
           station?: string | null
+          sugar_g?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1786,10 +1864,12 @@ export type Database = {
           cost_per_unit: number | null
           id: string
           is_active: boolean | null
+          last_restocked_at: string | null
           min_threshold: number | null
           name: string
           qty: number
           supplier: string | null
+          supplier_id: string | null
           unit: string
           updated_at: string | null
         }
@@ -1798,10 +1878,12 @@ export type Database = {
           cost_per_unit?: number | null
           id?: string
           is_active?: boolean | null
+          last_restocked_at?: string | null
           min_threshold?: number | null
           name: string
           qty?: number
           supplier?: string | null
+          supplier_id?: string | null
           unit: string
           updated_at?: string | null
         }
@@ -1810,10 +1892,12 @@ export type Database = {
           cost_per_unit?: number | null
           id?: string
           is_active?: boolean | null
+          last_restocked_at?: string | null
           min_threshold?: number | null
           name?: string
           qty?: number
           supplier?: string | null
+          supplier_id?: string | null
           unit?: string
           updated_at?: string | null
         }
@@ -1824,6 +1908,7 @@ export type Database = {
           change_qty: number
           created_at: string | null
           id: string
+          movement_type: string | null
           reason: string
           ref_order_id: string | null
           staff_id: string | null
@@ -1833,6 +1918,7 @@ export type Database = {
           change_qty: number
           created_at?: string | null
           id?: string
+          movement_type?: string | null
           reason: string
           ref_order_id?: string | null
           staff_id?: string | null
@@ -1842,6 +1928,7 @@ export type Database = {
           change_qty?: number
           created_at?: string | null
           id?: string
+          movement_type?: string | null
           reason?: string
           ref_order_id?: string | null
           staff_id?: string | null
@@ -2075,6 +2162,7 @@ export type Database = {
         Returns: undefined
       }
       calculate_payroll: { Args: { p_period_id: string }; Returns: undefined }
+      check_low_stock_and_disable_menu: { Args: never; Returns: Json }
       earn_loyalty_points: {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
