@@ -39,7 +39,8 @@ const CHANNEL_COLORS: Record<string, string> = {
 const CHANNEL_ICONS: Record<string, string> = {
   line_man: "💚", grab: "🟢", robinhood: "🟣", shopee_food: "🟠",
 };
-const DELIVERY_CHANNELS = ["line_man", "grab", "robinhood", "shopee_food"];
+const DELIVERY_CHANNELS = ["line_man", "grab", "robinhood", "shopee_food"] as const;
+type DeliveryChannel = typeof DELIVERY_CHANNELS[number];
 
 type OmniTab = "orders" | "config" | "analytics";
 

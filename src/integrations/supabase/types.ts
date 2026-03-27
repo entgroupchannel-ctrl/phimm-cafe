@@ -717,18 +717,24 @@ export type Database = {
         Row: {
           allergens: string[] | null
           calories: number | null
+          carbs_g: number | null
           category_id: string | null
           cost: number | null
           created_at: string | null
           description: string | null
           diet_tags: string[] | null
           emoji: string | null
+          fat_g: number | null
+          fiber_g: number | null
+          health_score: number | null
           id: string
           image_url: string | null
           is_available: boolean | null
           is_popular: boolean | null
           name: string
           price: number
+          protein_g: number | null
+          sodium_mg: number | null
           sort_order: number | null
           station: string | null
           updated_at: string | null
@@ -736,18 +742,24 @@ export type Database = {
         Insert: {
           allergens?: string[] | null
           calories?: number | null
+          carbs_g?: number | null
           category_id?: string | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
           diet_tags?: string[] | null
           emoji?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          health_score?: number | null
           id?: string
           image_url?: string | null
           is_available?: boolean | null
           is_popular?: boolean | null
           name: string
           price: number
+          protein_g?: number | null
+          sodium_mg?: number | null
           sort_order?: number | null
           station?: string | null
           updated_at?: string | null
@@ -755,18 +767,24 @@ export type Database = {
         Update: {
           allergens?: string[] | null
           calories?: number | null
+          carbs_g?: number | null
           category_id?: string | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
           diet_tags?: string[] | null
           emoji?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          health_score?: number | null
           id?: string
           image_url?: string | null
           is_available?: boolean | null
           is_popular?: boolean | null
           name?: string
           price?: number
+          protein_g?: number | null
+          sodium_mg?: number | null
           sort_order?: number | null
           station?: string | null
           updated_at?: string | null
