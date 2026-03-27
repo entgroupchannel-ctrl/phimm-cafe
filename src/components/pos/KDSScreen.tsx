@@ -518,6 +518,159 @@ export function KDSScreen() {
     return (now - new Date(o.sentAt).getTime()) / 60000 > 10;
   }).length;
 
+  // Fetch pending counts for station selection
+  useEffect(() => {
+    if (kdsMode !== "select" || dbStations.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from("order_items").select("station_id").in("status", ["sent", "cooking"]).not("station_id", "is", null);
+      if (data) {
+        const counts: Record<string, number> = {};
+        (data as any[]).forEach(i => { counts[i.station_id] = (counts[i.station_id] || 0) + 1; });
+        setStationPendingCounts(counts);
+      }
+    })();
+  }, [kdsMode, dbStations]);
+
+  // Station selection screen
+  if (kdsMode === "loading") {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (kdsMode === "select") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-background p-8">
+        <div className="text-[48px] mb-4">👨‍🍳</div>
+        <h1 className="text-[20px] font-black text-foreground mb-1">เลือกสถานีครัว</h1>
+        <p className="text-[13px] text-muted-foreground mb-8">Select Kitchen Station</p>
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(dbStations.length + 2, 4)}, 1fr)` }}>
+          {dbStations.map(s => (
+            <button key={s.id} onClick={() => { setActiveStationId(s.id); setKdsMode("station"); }}
+              className="relative flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-border bg-card hover:shadow-lg hover:scale-[1.03] transition-all min-w-[140px]"
+              style={{ borderColor: s.color + "44" }}>
+              <span className="text-[36px]">{s.icon}</span>
+              <span className="text-[14px] font-bold text-foreground">{s.name}</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold" style={{ backgroundColor: s.color + "15", color: s.color }}>{s.short_name}</span>
+              {(stationPendingCounts[s.id] || 0) > 0 && (
+                <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-danger text-white text-[11px] font-bold flex items-center justify-center">
+                  {stationPendingCounts[s.id]}
+                </span>
+              )}
+            </button>
+          ))}
+          <button onClick={() => { setActiveStationId(null); setKdsMode("all"); }}
+            className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-border bg-card hover:shadow-lg hover:scale-[1.03] transition-all min-w-[140px]">
+            <span className="text-[36px]">📋</span>
+            <span className="text-[14px] font-bold text-foreground">ดูทั้งหมด</span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary">ALL</span>
+          </button>
+          <button onClick={() => { setKdsMode("expeditor"); }}
+            className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-border bg-card hover:shadow-lg hover:scale-[1.03] transition-all min-w-[140px]">
+            <span className="text-[36px]">👨‍🍳</span>
+            <span className="text-[14px] font-bold text-foreground">Expeditor</span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-warning/10 text-warning">EXP</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Expeditor view
+  if (kdsMode === "expeditor") {
+    const expOrders = orders.map(o => {
+      const stationGroups: Record<string, { total: number; done: number }> = {};
+      o.items.forEach(it => {
+        const sid = it.stationId;
+        if (!sid) return;
+        if (!stationGroups[sid]) stationGroups[sid] = { total: 0, done: 0 };
+        stationGroups[sid].total++;
+        if (it.status === "ready" || it.status === "served") stationGroups[sid].done++;
+      });
+      return {
+        orderId: o.orderId, orderNumber: o.orderNumber, table: o.table,
+        sentAt: o.sentAt, status: o.status,
+        totalItems: o.items.length, doneItems: o.items.filter(i => i.status === "ready" || i.status === "served").length,
+        stations: Object.entries(stationGroups).map(([sid, g]) => {
+          const s = dbStations.find(st => st.id === sid);
+          return { stationId: sid, name: s?.name || "?", icon: s?.icon || "?", color: s?.color || "#888", ...g };
+        }),
+      };
+    });
+
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+        <div className="px-5 py-3 bg-card border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setKdsMode("select")} className="text-muted-foreground hover:text-foreground text-[18px]">←</button>
+            <div>
+              <div className="text-[15px] font-extrabold text-foreground">👨‍🍳 Expeditor View</div>
+              <div className="text-[10px] text-muted-foreground">ดูความคืบหน้าทุกสถานี</div>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-success/10 text-success border border-success/30">🔴 LIVE</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", alignItems: "start" }}>
+            {expOrders.map(o => {
+              const allDone = o.doneItems === o.totalItems;
+              const sentAt = o.sentAt ? Math.max(0, Math.floor((now - new Date(o.sentAt).getTime()) / 1000)) : 0;
+              return (
+                <div key={o.orderId} className={cn("rounded-2xl border-2 bg-card overflow-hidden",
+                  allDone ? "border-success/60" : o.status === "new" ? "border-danger/60" : "border-border")}>
+                  <div className={cn("px-4 py-2.5 border-b border-border flex items-center justify-between",
+                    allDone ? "bg-success/8" : "bg-card")}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-black text-[15px] text-foreground">{o.orderNumber}</span>
+                      <span className="text-[12px] text-muted-foreground">🪑 {o.table}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground tabular-nums">{o.doneItems}/{o.totalItems}</span>
+                      <span className={cn("font-mono text-[13px] font-bold tabular-nums",
+                        allDone ? "text-success" : sentAt > 600 ? "text-danger" : "text-foreground")}>
+                        ⏱ {formatTime(sentAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    {o.stations.map(s => {
+                      const pct = s.total > 0 ? (s.done / s.total) * 100 : 0;
+                      return (
+                        <div key={s.stationId} className="flex items-center gap-2">
+                          <span className="text-[14px] shrink-0">{s.icon}</span>
+                          <span className="text-[11px] font-bold shrink-0 w-14 truncate" style={{ color: s.color }}>{s.name.split("/")[0].trim()}</span>
+                          <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: pct === 100 ? "hsl(var(--success))" : s.color }} />
+                          </div>
+                          <span className="text-[10px] font-mono tabular-nums text-muted-foreground shrink-0">{s.done}/{s.total}</span>
+                          {pct === 100 && <span className="text-[10px]">✅</span>}
+                        </div>
+                      );
+                    })}
+                    {allDone && (
+                      <div className="mt-1 text-center text-[12px] font-bold text-success">✅ พร้อมเสิร์ฟ</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {expOrders.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <div className="text-[48px] mb-3">🎉</div>
+              <div className="text-[18px] font-bold text-foreground mb-1">ไม่มีออเดอร์</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Active station info for header
+  const activeDbStation = activeStationId ? dbStations.find(s => s.id === activeStationId) : null;
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Top bar */}
