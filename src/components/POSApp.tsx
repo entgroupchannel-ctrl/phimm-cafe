@@ -15,6 +15,7 @@ import { AIScreen } from "./pos/AIScreen";
 import { NutritionScreen } from "./pos/NutritionScreen";
 import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
+import { PayrollScreen } from "./pos/PayrollScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { TableMapScreen } from "./pos/TableMapScreen";
 import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
@@ -31,7 +32,7 @@ import {
   Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
 
 const NAV_GROUPS = [
   {
