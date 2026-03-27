@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -11,7 +12,7 @@ import { TrendingUp, TrendingDown, Receipt, Users, Star, Download, FileText, Cal
 // ── Helpers ──────────────────────────────────────────────────
 function bangkokToday(offset = 0) {
   const d = new Date();
-  d.setHours(d.getHours() + 7); // UTC → Bangkok
+  d.setHours(d.getHours() + 7);
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
 }
@@ -26,7 +27,7 @@ function StatCard({ icon, label, value, sub, trend, color }: {
     warning: "hsl(var(--warning))",
   };
   return (
-    <div className="flex-1 min-w-[180px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+    <div className="flex-1 min-w-0 bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[20px]">{icon}</span>
         {trend !== undefined && (
@@ -38,7 +39,7 @@ function StatCard({ icon, label, value, sub, trend, color }: {
         )}
       </div>
       <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</div>
-      <div className="font-mono text-[24px] font-black tabular-nums text-foreground leading-none" style={{ color: colorMap[color] || undefined }}>
+      <div className="font-mono text-[22px] md:text-[24px] font-black tabular-nums text-foreground leading-none" style={{ color: colorMap[color] || undefined }}>
         {value}
       </div>
       {sub && <div className="text-[10px] text-muted-foreground mt-1">{sub}</div>}
@@ -55,31 +56,20 @@ const PIE_COLORS = [
 ];
 
 const PAYMENT_LABELS: Record<string, string> = {
-  promptpay: "PromptPay",
-  cash: "เงินสด",
-  credit_card: "บัตร",
-  delivery_platform: "Delivery",
-  other: "อื่นๆ",
+  promptpay: "PromptPay", cash: "เงินสด", credit_card: "บัตร", delivery_platform: "Delivery", other: "อื่นๆ",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
-  walk_in: "หน้าร้าน",
-  kiosk: "Kiosk",
-  qr_order: "QR Order",
-  line_man: "LINE MAN",
-  grab: "Grab",
-  robinhood: "Robinhood",
-  shopee: "Shopee",
-  phone: "โทรศัพท์",
+  walk_in: "หน้าร้าน", kiosk: "Kiosk", qr_order: "QR Order", line_man: "LINE MAN",
+  grab: "Grab", robinhood: "Robinhood", shopee: "Shopee", phone: "โทรศัพท์",
 };
 
 // ── Main Component ───────────────────────────────────────────
 export function DashboardScreen() {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState(bangkokToday());
   const [loading, setLoading] = useState(true);
-
-  // Data
   const [todayOrders, setTodayOrders] = useState<any[]>([]);
   const [yesterdayOrders, setYesterdayOrders] = useState<any[]>([]);
   const [todayItems, setTodayItems] = useState<any[]>([]);
@@ -87,9 +77,7 @@ export function DashboardScreen() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedDate]);
+  useEffect(() => { fetchData(); }, [selectedDate]);
 
   async function fetchData() {
     setLoading(true);
@@ -109,14 +97,11 @@ export function DashboardScreen() {
     setYesterdayOrders(yOrdersRes.data || []);
     setTodayItems(itemsRes.data || []);
     setRecentOrders(recentRes.data || []);
-
     const ratings = ratingRes.data || [];
     setAvgRating(ratings.length > 0 ? ratings.reduce((s: number, r: any) => s + r.rating, 0) / ratings.length : null);
-
     setLoading(false);
   }
 
-  // ── Computed stats ──
   const todayRevenue = todayOrders.reduce((s, o) => s + Number(o.total || 0), 0);
   const yesterdayRevenue = yesterdayOrders.reduce((s, o) => s + Number(o.total || 0), 0);
   const revenueTrend = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0;
@@ -124,22 +109,17 @@ export function DashboardScreen() {
   const totalGuests = todayOrders.reduce((s, o) => s + (o.guest_count || 1), 0);
   const avgBill = totalBills > 0 ? Math.round(todayRevenue / totalBills) : 0;
 
-  // Hourly data
   const hourlyData = useMemo(() => {
     const hours: Record<number, { revenue: number; orders: number }> = {};
     for (let h = 8; h <= 23; h++) hours[h] = { revenue: 0, orders: 0 };
     todayOrders.forEach(o => {
       if (!o.paid_at) return;
       const h = new Date(o.paid_at).getHours();
-      if (hours[h]) {
-        hours[h].revenue += Number(o.total || 0);
-        hours[h].orders += 1;
-      }
+      if (hours[h]) { hours[h].revenue += Number(o.total || 0); hours[h].orders += 1; }
     });
     return Object.entries(hours).map(([h, d]) => ({ hour: `${h}:00`, revenue: d.revenue, orders: d.orders }));
   }, [todayOrders]);
 
-  // Top items
   const topItems = useMemo(() => {
     const map: Record<string, { qty: number; sales: number }> = {};
     todayItems.forEach(i => {
@@ -148,52 +128,29 @@ export function DashboardScreen() {
       map[key].qty += i.qty;
       map[key].sales += Number(i.price) * i.qty;
     });
-    return Object.entries(map)
-      .map(([name, d]) => ({ name, ...d }))
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 10);
+    return Object.entries(map).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.qty - a.qty).slice(0, 10);
   }, [todayItems]);
 
-  // Payment breakdown
   const paymentData = useMemo(() => {
     const map: Record<string, number> = {};
-    todayOrders.forEach(o => {
-      const m = o.payment_method || 'other';
-      map[m] = (map[m] || 0) + 1;
-    });
-    return Object.entries(map).map(([key, count]) => ({
-      name: PAYMENT_LABELS[key] || key,
-      value: count,
-    }));
+    todayOrders.forEach(o => { const m = o.payment_method || 'other'; map[m] = (map[m] || 0) + 1; });
+    return Object.entries(map).map(([key, count]) => ({ name: PAYMENT_LABELS[key] || key, value: count }));
   }, [todayOrders]);
 
-  // Channel breakdown
   const channelData = useMemo(() => {
     const map: Record<string, number> = {};
-    todayOrders.forEach(o => {
-      const ch = o.channel || 'walk_in';
-      map[ch] = (map[ch] || 0) + Number(o.total || 0);
-    });
-    return Object.entries(map)
-      .map(([key, total]) => ({ name: CHANNEL_LABELS[key] || key, total }))
-      .sort((a, b) => b.total - a.total);
+    todayOrders.forEach(o => { const ch = o.channel || 'walk_in'; map[ch] = (map[ch] || 0) + Number(o.total || 0); });
+    return Object.entries(map).map(([key, total]) => ({ name: CHANNEL_LABELS[key] || key, total })).sort((a, b) => b.total - a.total);
   }, [todayOrders]);
 
-  // Kitchen performance
   const kitchenPerf = useMemo(() => {
-    // We'll calculate from order_items that have cooking_seconds
     const items = todayItems.filter((i: any) => i.cooking_seconds > 0);
     if (items.length === 0) return null;
     const avg = items.reduce((s: number, i: any) => s + i.cooking_seconds, 0) / items.length;
     const sorted = [...items].sort((a: any, b: any) => a.cooking_seconds - b.cooking_seconds);
-    return {
-      avgMinutes: (avg / 60).toFixed(1),
-      fastest: sorted[0],
-      slowest: sorted[sorted.length - 1],
-    };
+    return { avgMinutes: (avg / 60).toFixed(1), fastest: sorted[0], slowest: sorted[sorted.length - 1] };
   }, [todayItems]);
 
-  // Export CSV
   function exportCSV() {
     const header = "order_number,table,total,payment_method,channel,status,created_at\n";
     const rows = recentOrders.map(o =>
@@ -202,9 +159,7 @@ export function DashboardScreen() {
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `phimm-sales-${selectedDate}.csv`;
-    a.click();
+    a.href = url; a.download = `phimm-sales-${selectedDate}.csv`; a.click();
     URL.revokeObjectURL(url);
     toast({ title: "📥 Export สำเร็จ", description: `ดาวน์โหลด phimm-sales-${selectedDate}.csv` });
   }
@@ -213,11 +168,8 @@ export function DashboardScreen() {
     setGenerating(true);
     const { error } = await supabase.rpc('generate_daily_summary', { p_date: selectedDate });
     setGenerating(false);
-    if (error) {
-      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "✅ สร้างสรุปวันเสร็จแล้ว", description: `สรุปวันที่ ${selectedDate}` });
-    }
+    if (error) toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    else toast({ title: "✅ สร้างสรุปวันเสร็จแล้ว", description: `สรุปวันที่ ${selectedDate}` });
   }
 
   const statusStyle = (s: string) => {
@@ -233,32 +185,38 @@ export function DashboardScreen() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[hsl(var(--surface))] shrink-0">
+      <div className={cn(
+        "flex items-center justify-between border-b border-border bg-[hsl(var(--surface))] shrink-0",
+        isMobile ? "px-3 py-2" : "px-5 py-3"
+      )}>
         <div>
-          <h1 className="text-[15px] font-bold text-foreground">📊 Dashboard</h1>
-          <p className="text-[11px] text-muted-foreground">Sales Analytics</p>
+          <h1 className={cn("font-bold text-foreground", isMobile ? "text-[13px]" : "text-[15px]")}>📊 Dashboard</h1>
+          {!isMobile && <p className="text-[11px] text-muted-foreground">Sales Analytics</p>}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-muted rounded-xl px-3 py-2 border border-border">
+        <div className={cn("flex items-center", isMobile ? "gap-1.5" : "gap-2")}>
+          <div className={cn("flex items-center gap-1.5 bg-muted rounded-xl border border-border", isMobile ? "px-2 py-1.5" : "px-3 py-2")}>
             <Calendar size={13} className="text-muted-foreground" />
             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-              className="bg-transparent text-[12px] font-semibold text-foreground outline-none w-[120px]" />
+              className={cn("bg-transparent font-semibold text-foreground outline-none", isMobile ? "text-[11px] w-[100px]" : "text-[12px] w-[120px]")} />
           </div>
-          <button onClick={generateSummary} disabled={generating}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50">
-            <RefreshCw size={12} className={generating ? "animate-spin" : ""} />
-            สร้างสรุปวัน
-          </button>
-          <button onClick={exportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold bg-muted text-muted-foreground border border-border hover:text-foreground transition-colors">
-            <Download size={12} />
-            CSV
-          </button>
+          {!isMobile && (
+            <>
+              <button onClick={generateSummary} disabled={generating}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50">
+                <RefreshCw size={12} className={generating ? "animate-spin" : ""} />
+                สร้างสรุปวัน
+              </button>
+              <button onClick={exportCSV}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold bg-muted text-muted-foreground border border-border hover:text-foreground transition-colors">
+                <Download size={12} /> CSV
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-5 space-y-4">
+      <div className={cn("flex-1 overflow-y-auto scrollbar-hide space-y-4", isMobile ? "p-3" : "p-5")}>
         {loading ? (
           <div className="flex items-center justify-center h-64 text-muted-foreground">
             <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mr-3" />
@@ -267,32 +225,25 @@ export function DashboardScreen() {
         ) : (
           <>
             {/* Stat cards */}
-            <div className="flex gap-3 flex-wrap">
-              <StatCard icon="💰" label="ยอดขายวันนี้"
-                value={`฿${todayRevenue.toLocaleString()}`}
-                sub="vs เมื่อวาน" color="success" trend={revenueTrend} />
-              <StatCard icon={<Receipt size={18} />} label="จำนวนบิล"
-                value={String(totalBills)} sub={`เฉลี่ย ฿${avgBill.toLocaleString()}/บิล`} color="primary" />
-              <StatCard icon={<Users size={18} />} label="ลูกค้า"
-                value={String(totalGuests)} sub="walk-in + delivery" color="accent" />
-              <StatCard icon={<Star size={18} />} label="คะแนนเฉลี่ย"
-                value={avgRating != null ? `${avgRating.toFixed(1)}` : "—"}
-                sub={avgRating != null ? "/ 5.0" : "ยังไม่มีรีวิว"} color="warning" />
+            <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "flex flex-wrap")}>
+              <StatCard icon="💰" label="ยอดขายวันนี้" value={`฿${todayRevenue.toLocaleString()}`} sub="vs เมื่อวาน" color="success" trend={revenueTrend} />
+              <StatCard icon={<Receipt size={18} />} label="จำนวนบิล" value={String(totalBills)} sub={`เฉลี่ย ฿${avgBill.toLocaleString()}/บิล`} color="primary" />
+              <StatCard icon={<Users size={18} />} label="ลูกค้า" value={String(totalGuests)} sub="walk-in + delivery" color="accent" />
+              <StatCard icon={<Star size={18} />} label="คะแนนเฉลี่ย" value={avgRating != null ? `${avgRating.toFixed(1)}` : "—"} sub={avgRating != null ? "/ 5.0" : "ยังไม่มีรีวิว"} color="warning" />
             </div>
 
             {/* Hourly chart */}
-            <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
               <div className="text-[14px] font-bold text-foreground mb-4 flex items-center gap-2">
                 <TrendingUp size={15} className="text-primary" />
                 ยอดขายรายชั่วโมง
               </div>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={isMobile ? 160 : 200}>
                 <BarChart data={hourlyData}>
                   <XAxis dataKey="hour" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `฿${(v/1000).toFixed(0)}k`} />
                   <Tooltip
                     formatter={(value: number) => [`฿${value.toLocaleString()}`, 'ยอดขาย']}
-                    labelFormatter={l => `${l}`}
                     contentStyle={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }}
                   />
                   <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
@@ -301,9 +252,8 @@ export function DashboardScreen() {
             </div>
 
             {/* Top items + Payment pie */}
-            <div className="flex gap-4 flex-wrap">
-              {/* Top items */}
-              <div className="flex-1 min-w-[340px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-wrap")}>
+              <div className={cn("bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]", isMobile ? "w-full" : "flex-1 min-w-[340px]")}>
                 <div className="text-[14px] font-bold text-foreground mb-3">🏆 เมนูขายดีวันนี้</div>
                 {topItems.length === 0 ? (
                   <div className="text-[12px] text-muted-foreground text-center py-8">ยังไม่มีข้อมูล</div>
@@ -323,8 +273,7 @@ export function DashboardScreen() {
                 )}
               </div>
 
-              {/* Payment pie */}
-              <div className="w-[300px] shrink-0 bg-[hsl(var(--surface))] border border-border rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <div className={cn("bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]", isMobile ? "w-full" : "w-[300px] shrink-0")}>
                 <div className="text-[14px] font-bold text-foreground mb-3">💳 แยกช่องทางชำระ</div>
                 {paymentData.length === 0 ? (
                   <div className="text-[12px] text-muted-foreground text-center py-8">ยังไม่มีข้อมูล</div>
@@ -342,9 +291,8 @@ export function DashboardScreen() {
             </div>
 
             {/* Channel + Kitchen Performance */}
-            <div className="flex gap-4 flex-wrap">
-              {/* Channel */}
-              <div className="flex-1 min-w-[300px] bg-[hsl(var(--surface))] border border-border rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className={cn("flex gap-4", isMobile ? "flex-col" : "flex-wrap")}>
+              <div className={cn("bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]", isMobile ? "w-full" : "flex-1 min-w-[300px]")}>
                 <div className="text-[14px] font-bold text-foreground mb-3">📊 แยกตาม Channel</div>
                 {channelData.length === 0 ? (
                   <div className="text-[12px] text-muted-foreground text-center py-8">ยังไม่มีข้อมูล</div>
@@ -361,8 +309,7 @@ export function DashboardScreen() {
                 )}
               </div>
 
-              {/* Kitchen perf */}
-              <div className="w-[300px] shrink-0 bg-[hsl(var(--surface))] border border-border rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <div className={cn("bg-[hsl(var(--surface))] border border-border rounded-2xl p-4 md:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]", isMobile ? "w-full" : "w-[300px] shrink-0")}>
                 <div className="text-[14px] font-bold text-foreground mb-3">⏱ Kitchen Performance</div>
                 {!kitchenPerf ? (
                   <div className="text-[12px] text-muted-foreground text-center py-8">ยังไม่มีข้อมูลครัววันนี้</div>
@@ -391,7 +338,7 @@ export function DashboardScreen() {
 
             {/* Recent orders */}
             <div className="bg-[hsl(var(--surface))] border border-border rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between px-4 md:px-5 pt-4 md:pt-5 pb-3">
                 <div className="text-[14px] font-bold text-foreground flex items-center gap-2">
                   <Receipt size={15} className="text-primary" />
                   ออเดอร์ล่าสุด
@@ -402,35 +349,35 @@ export function DashboardScreen() {
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="text-muted-foreground text-left border-b border-border/60">
-                      <th className="px-5 py-2.5 font-semibold">หมายเลข</th>
+                      <th className="px-4 md:px-5 py-2.5 font-semibold">หมายเลข</th>
                       <th className="px-3 py-2.5 font-semibold">โต๊ะ</th>
                       <th className="px-3 py-2.5 font-semibold">ยอด</th>
-                      <th className="px-3 py-2.5 font-semibold">ชำระ</th>
-                      <th className="px-3 py-2.5 font-semibold">ช่องทาง</th>
+                      {!isMobile && <th className="px-3 py-2.5 font-semibold">ชำระ</th>}
+                      {!isMobile && <th className="px-3 py-2.5 font-semibold">ช่องทาง</th>}
                       <th className="px-3 py-2.5 font-semibold">สถานะ</th>
-                      <th className="px-5 py-2.5 font-semibold">เวลา</th>
+                      <th className="px-4 md:px-5 py-2.5 font-semibold">เวลา</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentOrders.map((o, i) => (
+                    {recentOrders.map((o) => (
                       <tr key={o.id} className="hover:bg-muted/40 transition-colors border-b border-border/30 last:border-b-0">
-                        <td className="px-5 py-3 font-mono font-bold text-foreground">{o.order_number}</td>
+                        <td className="px-4 md:px-5 py-3 font-mono font-bold text-foreground">{o.order_number}</td>
                         <td className="px-3 py-3 font-semibold text-foreground">{o.tables?.label || '—'}</td>
                         <td className="px-3 py-3 font-mono font-bold tabular-nums text-primary">฿{Number(o.total || 0).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-muted-foreground">{PAYMENT_LABELS[o.payment_method] || o.payment_method || '—'}</td>
-                        <td className="px-3 py-3 text-muted-foreground">{CHANNEL_LABELS[o.channel] || o.channel || '—'}</td>
+                        {!isMobile && <td className="px-3 py-3 text-muted-foreground">{PAYMENT_LABELS[o.payment_method] || o.payment_method || '—'}</td>}
+                        {!isMobile && <td className="px-3 py-3 text-muted-foreground">{CHANNEL_LABELS[o.channel] || o.channel || '—'}</td>}
                         <td className="px-3 py-3">
                           <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-lg border", statusStyle(o.status))}>
                             {statusLabel(o.status)}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-muted-foreground font-mono tabular-nums text-[11px]">
+                        <td className="px-4 md:px-5 py-3 text-muted-foreground font-mono tabular-nums text-[11px]">
                           {o.created_at ? new Date(o.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—'}
                         </td>
                       </tr>
                     ))}
                     {recentOrders.length === 0 && (
-                      <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">ยังไม่มีออเดอร์วันนี้</td></tr>
+                      <tr><td colSpan={isMobile ? 5 : 7} className="text-center py-8 text-muted-foreground">ยังไม่มีออเดอร์วันนี้</td></tr>
                     )}
                   </tbody>
                 </table>

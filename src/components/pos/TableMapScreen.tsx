@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Users, Clock, QrCode, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type TableStatus = "available" | "occupied" | "waiting_bill";
 
@@ -48,6 +49,7 @@ function getElapsed(createdAt: string): string {
 export function TableMapScreen({ onSelectTable }: Props) {
   const [tables, setTables] = useState<TableData[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   async function fetchTables() {
     const { data, error } = await supabase
@@ -83,23 +85,12 @@ export function TableMapScreen({ onSelectTable }: Props) {
 
   useEffect(() => {
     fetchTables();
-
-    // Realtime subscription
     const channel = supabase
       .channel('tables-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'tables' },
-        () => fetchTables()
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => fetchTables()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => fetchTables())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchTables())
       .subscribe();
-
-    // Auto-refresh elapsed time
     const interval = setInterval(() => fetchTables(), 30000);
-
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
@@ -113,26 +104,35 @@ export function TableMapScreen({ onSelectTable }: Props) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-[hsl(var(--surface))]">
+      <div className={cn(
+        "flex items-center justify-between border-b border-border bg-[hsl(var(--surface))]",
+        isMobile ? "px-3 py-2" : "px-5 py-3"
+      )}>
         <div>
-          <h1 className="text-[15px] font-bold text-foreground">แผนผังโต๊ะ</h1>
-          <p className="text-[11px] text-muted-foreground">Table Map</p>
+          <h1 className={cn("font-bold text-foreground", isMobile ? "text-[13px]" : "text-[15px]")}>แผนผังโต๊ะ</h1>
+          {!isMobile && <p className="text-[11px] text-muted-foreground">Table Map</p>}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-[12px] font-semibold">
-            <span className="flex items-center gap-1.5 bg-[hsl(var(--surface))] border border-border px-3 py-1.5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <span className="font-mono tabular-nums text-primary">{occupied + waitingBill}/{tables.length}</span>
-              <span className="text-muted-foreground font-normal">โต๊ะที่ใช้งาน</span>
-            </span>
-            <span className="flex items-center gap-1.5 bg-[hsl(var(--surface))] border border-border px-3 py-1.5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <span className="font-mono tabular-nums text-[hsl(var(--success))] font-bold">
-                ฿{totalRevenue.toLocaleString()}
+        <div className="flex items-center gap-2">
+          {!isMobile && (
+            <div className="flex items-center gap-2 text-[12px] font-semibold">
+              <span className="flex items-center gap-1.5 bg-[hsl(var(--surface))] border border-border px-3 py-1.5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                <span className="font-mono tabular-nums text-primary">{occupied + waitingBill}/{tables.length}</span>
+                <span className="text-muted-foreground font-normal">โต๊ะที่ใช้งาน</span>
               </span>
-              <span className="text-muted-foreground font-normal">ยอดปัจจุบัน</span>
+              <span className="flex items-center gap-1.5 bg-[hsl(var(--surface))] border border-border px-3 py-1.5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                <span className="font-mono tabular-nums text-[hsl(var(--success))] font-bold">
+                  ฿{totalRevenue.toLocaleString()}
+                </span>
+                <span className="text-muted-foreground font-normal">ยอดปัจจุบัน</span>
+              </span>
+            </div>
+          )}
+          {isMobile && (
+            <span className="text-[11px] font-mono tabular-nums text-primary font-bold">
+              {occupied + waitingBill}/{tables.length}
             </span>
-          </div>
+          )}
           <button
             onClick={() => fetchTables()}
             className="flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-muted hover:bg-muted/70 transition-colors text-muted-foreground hover:text-foreground"
@@ -143,15 +143,15 @@ export function TableMapScreen({ onSelectTable }: Props) {
       </div>
 
       {/* ── Table grid ── */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-5">
+      <div className={cn("flex-1 overflow-y-auto scrollbar-hide", isMobile ? "p-3" : "p-5")}>
         {loading ? (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-[160px] rounded-2xl bg-muted/60 animate-pulse border border-border" />
+          <div className="grid gap-3" style={{ gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(200px, 1fr))" }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className={cn("rounded-2xl bg-muted/60 animate-pulse border border-border", isMobile ? "h-[120px]" : "h-[160px]")} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(200px, 1fr))" }}>
             {tables.map(table => {
               const cfg = STATUS_CONFIG[table.status];
               const isAvailable = table.status === "available";
@@ -160,52 +160,54 @@ export function TableMapScreen({ onSelectTable }: Props) {
                   key={table.id}
                   onClick={() => onSelectTable(table.dbId, table.label)}
                   className={cn(
-                    "relative flex flex-col text-left p-4 rounded-2xl border-2 transition-all duration-150 select-none",
+                    "relative flex flex-col text-left rounded-2xl border-2 transition-all duration-150 select-none",
                     "bg-[hsl(var(--surface))] shadow-[0_1px_3px_rgba(0,0,0,0.05),0_4px_12px_rgba(0,0,0,0.04)]",
                     "hover:shadow-[0_2px_8px_rgba(0,0,0,0.08),0_8px_20px_rgba(0,0,0,0.06)] hover:scale-[1.02] active:scale-[0.99]",
                     cfg.border,
-                    isAvailable && "opacity-80 hover:opacity-100"
+                    isAvailable && "opacity-80 hover:opacity-100",
+                    isMobile ? "p-2.5" : "p-4"
                   )}
                 >
-                  <div className="absolute top-3 right-3 text-muted-foreground/30">
-                    <QrCode size={16} />
-                  </div>
+                  {!isMobile && (
+                    <div className="absolute top-3 right-3 text-muted-foreground/30">
+                      <QrCode size={16} />
+                    </div>
+                  )}
 
-                  <div className="text-[22px] font-black text-foreground leading-none mb-1.5">
+                  <div className={cn("font-black text-foreground leading-none mb-1", isMobile ? "text-[18px]" : "text-[22px]")}>
                     {table.label}
                   </div>
 
-                  <div className={cn("flex items-center gap-1.5 text-[12px] font-semibold mb-3", cfg.labelColor)}>
+                  <div className={cn("flex items-center gap-1.5 font-semibold mb-2", isMobile ? "text-[10px]" : "text-[12px]", cfg.labelColor)}>
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
                     <span>{cfg.label}</span>
-                    <span className="text-muted-foreground/50 font-normal">/ {cfg.labelEn}</span>
+                    {!isMobile && <span className="text-muted-foreground/50 font-normal">/ {cfg.labelEn}</span>}
                   </div>
 
-                  <div className="h-px bg-border/60 mb-3" />
+                  <div className="h-px bg-border/60 mb-2" />
 
                   {isAvailable ? (
-                    <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                      <Users size={12} />
+                    <div className={cn("flex items-center gap-1.5 text-muted-foreground", isMobile ? "text-[10px]" : "text-[12px]")}>
+                      <Users size={isMobile ? 10 : 12} />
                       <span>จุ {table.seats} ที่นั่ง</span>
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[12px]">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <span className="flex items-center gap-1"><Users size={11} /> {table.guests ?? '-'} คน</span>
-                          <span className="flex items-center gap-1"><Clock size={11} /> {table.elapsed ?? '-'}</span>
-                        </div>
+                    <div className="space-y-1">
+                      <div className={cn("flex items-center gap-2 text-muted-foreground", isMobile ? "text-[10px]" : "text-[12px]")}>
+                        <span className="flex items-center gap-1"><Users size={isMobile ? 9 : 11} /> {table.guests ?? '-'}</span>
+                        <span className="flex items-center gap-1"><Clock size={isMobile ? 9 : 11} /> {table.elapsed ?? '-'}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-muted-foreground">{table.items ?? 0} รายการ</span>
-                        <span className="font-mono font-bold text-[14px] tabular-nums text-foreground">
+                        <span className={cn("text-muted-foreground", isMobile ? "text-[9px]" : "text-[11px]")}>{table.items ?? 0} รายการ</span>
+                        <span className={cn("font-mono font-bold tabular-nums text-foreground", isMobile ? "text-[12px]" : "text-[14px]")}>
                           ฿{table.total?.toLocaleString() ?? '0'}
                         </span>
                       </div>
                       {table.status === "waiting_bill" && (
                         <div className={cn(
-                          "mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg",
-                          "bg-[hsl(38_92%_50%/0.12)] text-[hsl(38_92%_42%)] border border-[hsl(38_92%_50%/0.25)]"
+                          "mt-1 flex items-center gap-1.5 font-semibold px-2 py-0.5 rounded-lg",
+                          "bg-[hsl(38_92%_50%/0.12)] text-[hsl(38_92%_42%)] border border-[hsl(38_92%_50%/0.25)]",
+                          isMobile ? "text-[9px]" : "text-[11px]"
                         )}>
                           <span className="w-1.5 h-1.5 rounded-full bg-[hsl(38_92%_50%)] animate-pulse shrink-0" />
                           รอเช็คบิล
@@ -221,9 +223,12 @@ export function TableMapScreen({ onSelectTable }: Props) {
       </div>
 
       {/* ── Legend ── */}
-      <div className="flex items-center gap-5 px-5 py-2.5 border-t border-border/60 text-[11px] text-muted-foreground bg-[hsl(var(--surface))]">
+      <div className={cn(
+        "flex items-center gap-5 border-t border-border/60 text-muted-foreground bg-[hsl(var(--surface))]",
+        isMobile ? "px-3 py-2 text-[9px] gap-3 overflow-x-auto scrollbar-hide" : "px-5 py-2.5 text-[11px]"
+      )}>
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <span key={key} className="flex items-center gap-1.5">
+          <span key={key} className="flex items-center gap-1.5 shrink-0">
             <span className={cn("w-2 h-2 rounded-full", cfg.dot)} />
             {cfg.label} {key === "available" ? `(${available})` : key === "occupied" ? `(${occupied})` : `(${waitingBill})`}
           </span>
