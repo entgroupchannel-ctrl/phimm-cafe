@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Download, Plus, Clock, Users, DollarSign } from "lucide-react";
+import { Download, Plus, Clock, Users, DollarSign, Megaphone } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LeaveTab } from "./LeaveTab";
 
 const DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const DAYS_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
@@ -92,10 +93,25 @@ function StaffListTab() {
     fetchAll();
   }
 
+  // Extended form state for enhanced profile
+  const [formEmail, setFormEmail] = useState("");
+  const [formSalaryType, setFormSalaryType] = useState("hourly");
+  const [formDailyRate, setFormDailyRate] = useState("0");
+  const [formMonthlySalary, setFormMonthlySalary] = useState("0");
+  const [formOtMultiplier, setFormOtMultiplier] = useState("1.5");
+  const [formBankName, setFormBankName] = useState("");
+  const [formBankAccount, setFormBankAccount] = useState("");
+  const [formEmergencyContact, setFormEmergencyContact] = useState("");
+  const [formEmergencyPhone, setFormEmergencyPhone] = useState("");
+  const [formLineToken, setFormLineToken] = useState("");
+
   function openAdd() {
     setEditStaff(null);
     setFormName(""); setFormNickname(""); setFormRoleId(roles[0]?.id || "");
     setFormPin(""); setFormPhone(""); setFormRate("0"); setFormEmoji("👤");
+    setFormEmail(""); setFormSalaryType("hourly"); setFormDailyRate("0"); setFormMonthlySalary("0");
+    setFormOtMultiplier("1.5"); setFormBankName(""); setFormBankAccount("");
+    setFormEmergencyContact(""); setFormEmergencyPhone(""); setFormLineToken("");
     setShowAdd(true);
   }
 
@@ -104,6 +120,12 @@ function StaffListTab() {
     setFormName(s.name); setFormNickname(s.nickname || ""); setFormRoleId(s.role_id);
     setFormPin(s.pin || ""); setFormPhone(s.phone || ""); setFormRate(String(s.hourly_rate || 0));
     setFormEmoji(s.avatar_emoji || "👤");
+    setFormEmail(s.email || ""); setFormSalaryType(s.salary_type || "hourly");
+    setFormDailyRate(String(s.daily_rate || 0)); setFormMonthlySalary(String(s.monthly_salary || 0));
+    setFormOtMultiplier(String(s.ot_rate_multiplier || 1.5));
+    setFormBankName(s.bank_name || ""); setFormBankAccount(s.bank_account || "");
+    setFormEmergencyContact(s.emergency_contact || ""); setFormEmergencyPhone(s.emergency_phone || "");
+    setFormLineToken(s.line_token || "");
     setShowAdd(true);
   }
 
@@ -111,6 +133,11 @@ function StaffListTab() {
     const payload: any = {
       name: formName, nickname: formNickname, role_id: formRoleId,
       pin: formPin, phone: formPhone, hourly_rate: Number(formRate), avatar_emoji: formEmoji,
+      email: formEmail, salary_type: formSalaryType, daily_rate: Number(formDailyRate),
+      monthly_salary: Number(formMonthlySalary), ot_rate_multiplier: Number(formOtMultiplier),
+      bank_name: formBankName, bank_account: formBankAccount,
+      emergency_contact: formEmergencyContact, emergency_phone: formEmergencyPhone,
+      line_token: formLineToken,
     };
     if (editStaff) {
       await supabase.from('staff').update(payload).eq('id', editStaff.id);
@@ -121,6 +148,18 @@ function StaffListTab() {
     }
     setShowAdd(false);
     fetchAll();
+  }
+
+  async function testLineNotify(token: string) {
+    try {
+      const { data, error } = await supabase.functions.invoke('line-notify', {
+        body: { token, message: '\n🧪 ทดสอบจาก Phimm Cafe POS — ถ้าเห็นข้อความนี้ LINE Notify ใช้งานได้!' },
+      });
+      if (error) throw error;
+      toast({ title: data?.ok ? "✅ ส่ง LINE สำเร็จ" : "❌ ส่งไม่สำเร็จ" });
+    } catch (e: any) {
+      toast({ title: "❌ Error", description: e.message, variant: "destructive" });
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mr-2"/>กำลังโหลด...</div>;
