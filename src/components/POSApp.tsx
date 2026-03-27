@@ -69,6 +69,14 @@ const NAV_GROUPS = [
       { key: "settings"  as Screen, icon: Settings,  label: "ตั้งค่า",  permission: "manage_settings" },
     ],
   },
+  {
+    label: "Admin",
+    items: [
+      { key: "admin-tables"   as Screen, icon: Armchair, label: "โต๊ะ",        permission: "manage_settings" },
+      { key: "admin-stations" as Screen, icon: Flame,    label: "สถานีครัว",   permission: "manage_settings" },
+      { key: "admin-routing"  as Screen, icon: Route,    label: "Routing",     permission: "manage_settings" },
+    ],
+  },
 ];
 
 // ── Dark Mode Toggle ───────────────────────────────────────
