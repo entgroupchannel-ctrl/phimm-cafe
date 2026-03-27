@@ -187,7 +187,7 @@ function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
         {order.items.map((item, i) => {
           const isDone = item.status === "ready" || item.status === "served";
           const isCk = item.status === "cooking";
-          const st = STATIONS.find(s => s.id === item.station);
+          const st = LEGACY_STATIONS.find(s => s.id === item.station);
 
           // Cooking timer
           let cookingTimer: string | null = null;
@@ -405,7 +405,8 @@ export function KDSScreen() {
       }
       grouped[oid].items.push({
         id: item.id, name: item.name, qty: item.qty,
-        station: item.station, note: item.note, status: item.status,
+        station: item.station, stationId: item.station_id || null,
+        note: item.note, status: item.status,
         optionsText: item.options_text, cookingStartedAt: item.cooking_started_at,
         cookingSeconds: item.cooking_seconds,
       });
@@ -542,7 +543,7 @@ export function KDSScreen() {
 
       {/* Station filter */}
       <div className="px-4 py-2.5 border-b border-border bg-card flex items-center gap-1.5 overflow-x-auto scrollbar-hide shrink-0">
-        {STATIONS.map(s => {
+        {LEGACY_STATIONS.map(s => {
           const count = s.id === "all" ? orders.length : orders.filter(o => o.items.some(it => it.station === s.id)).length;
           return (
             <button key={s.id} onClick={() => setStation(s.id)}
