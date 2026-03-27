@@ -15,6 +15,7 @@ import { AIScreen } from "./pos/AIScreen";
 import { NutritionScreen } from "./pos/NutritionScreen";
 import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
+import { PayrollScreen } from "./pos/PayrollScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { TableMapScreen } from "./pos/TableMapScreen";
 import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
@@ -26,12 +27,12 @@ import {
   ShoppingCart, CreditCard, Monitor, QrCode,
   ChefHat, BookOpen, Package,
   Users, UserCog, Globe, LayoutDashboard,
-  Bot, Salad, Settings,
+  Bot, Salad, Settings, DollarSign,
   Sun, Moon, Menu, LayoutGrid, LogOut,
   Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
 
 const NAV_GROUPS = [
   {
@@ -57,6 +58,7 @@ const NAV_GROUPS = [
     items: [
       { key: "crm"       as Screen, icon: Users,           label: "ลูกค้า",    permission: "view_crm"       },
       { key: "staff"     as Screen, icon: UserCog,          label: "พนักงาน",   permission: "manage_staff"   },
+      { key: "payroll"   as Screen, icon: DollarSign,       label: "Payroll",   permission: "manage_settings" },
       { key: "omni"      as Screen, icon: Globe,            label: "Omni",      permission: "view_omni"      },
       { key: "dashboard" as Screen, icon: LayoutDashboard,  label: "Dashboard", permission: "view_dashboard" },
     ],
@@ -324,6 +326,7 @@ export function POSApp() {
         {screen === "admin-tables"   && <TableLayoutAdmin />}
         {screen === "admin-stations" && <KitchenStationAdmin />}
         {screen === "admin-routing"  && <MenuRoutingAdmin />}
+        {screen === "payroll"        && <PayrollScreen />}
       </main>
     </div>
   );
