@@ -26,8 +26,8 @@ interface Supplier {
 }
 interface StockLog {
   id: string; stock_item_id: string; change_qty: number;
-  reason: string; created_at: string; ref_order_id: string | null;
-  staff_id: string | null;
+  reason: string; movement_type: string | null; created_at: string;
+  ref_order_id: string | null; staff_id: string | null;
   stock_items: { name: string; unit: string } | null;
 }
 interface PO {
@@ -47,6 +47,13 @@ const REASON_LABELS: Record<string, { label: string; color: string }> = {
   manual_adjust: { label: "🔧 ปรับสต๊อก", color: "primary" },
   po_receive: { label: "📦 รับจาก PO", color: "success" },
   count_correct: { label: "📊 ตรวจนับ", color: "primary" },
+};
+const MOVEMENT_LABELS: Record<string, { label: string; color: string }> = {
+  usage: { label: "🍳 ใช้งาน", color: "warning" },
+  purchase: { label: "📦 ซื้อเข้า", color: "success" },
+  waste: { label: "🗑️ เสียหาย", color: "danger" },
+  count_correct: { label: "📊 ตรวจนับ", color: "primary" },
+  manual: { label: "🔧 ปรับเอง", color: "accent" },
 };
 
 // ─── Main Component ──────────────────────────────
@@ -94,7 +101,7 @@ export function StockScreen() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logReasonFilter, setLogReasonFilter] = useState("ทั้งหมด");
-  const [logItemFilter, setLogItemFilter] = useState("ทั้งหมด");
+  const [logMovementFilter, setLogMovementFilter] = useState("ทั้งหมด");
 
   // Suppliers state
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -138,7 +145,7 @@ export function StockScreen() {
 
   async function fetchLogs() {
     setLogsLoading(true);
-    const { data } = await supabase.from("stock_logs").select("*, stock_items(name, unit)").order("created_at", { ascending: false }).limit(200);
+    const { data } = await supabase.from("stock_logs").select("*, stock_items(name, unit)").order("created_at", { ascending: false }).limit(500);
     if (data) setLogs(data as any);
     setLogsLoading(false);
   }
@@ -302,10 +309,10 @@ export function StockScreen() {
 
   const filteredLogs = useMemo(() => {
     let list = logs;
-    if (logReasonFilter !== "ทั้งหมด") list = list.filter(l => l.reason === logReasonFilter);
-    if (logItemFilter !== "ทั้งหมด") list = list.filter(l => l.stock_item_id === logItemFilter);
+    if (logMovementFilter !== "ทั้งหมด") list = list.filter(l => (l.movement_type || "manual") === logMovementFilter);
+    if (logReasonFilter !== "ทั้งหมด") list = list.filter(l => l.stock_item_id === logReasonFilter);
     return list;
-  }, [logs, logReasonFilter, logItemFilter]);
+  }, [logs, logMovementFilter, logReasonFilter]);
 
   const filteredPOs = useMemo(() => {
     if (poStatusFilter === "ทั้งหมด") return pos;
@@ -548,15 +555,15 @@ export function StockScreen() {
 
             {/* Filters */}
             <div className="flex items-center gap-3 flex-wrap">
-              <select value={logItemFilter} onChange={e => setLogItemFilter(e.target.value)}
+              <select value={logReasonFilter} onChange={e => setLogReasonFilter(e.target.value)}
                 className="h-9 px-3 rounded-xl border border-border bg-background text-foreground text-[13px]">
                 <option value="ทั้งหมด">ทุกวัตถุดิบ</option>
                 {stocks.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <select value={logReasonFilter} onChange={e => setLogReasonFilter(e.target.value)}
+              <select value={logMovementFilter} onChange={e => setLogMovementFilter(e.target.value)}
                 className="h-9 px-3 rounded-xl border border-border bg-background text-foreground text-[13px]">
                 <option value="ทั้งหมด">ทุกประเภท</option>
-                {Object.entries(REASON_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                {Object.entries(MOVEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
 
@@ -579,7 +586,7 @@ export function StockScreen() {
                     </thead>
                     <tbody className="divide-y divide-border/40">
                       {filteredLogs.map(log => {
-                        const r = REASON_LABELS[log.reason] || { label: log.reason, color: "muted" };
+                        const mt = MOVEMENT_LABELS[log.movement_type || "manual"] || { label: log.movement_type || log.reason, color: "muted" };
                         return (
                           <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                             <td className="py-3 px-5 text-muted-foreground text-[12px]">
@@ -589,7 +596,7 @@ export function StockScreen() {
                               {log.stock_items?.name || "—"}
                             </td>
                             <td className="py-3 px-4">
-                              <POSBadge color={r.color as any}>{r.label}</POSBadge>
+                              <POSBadge color={mt.color as any}>{mt.label}</POSBadge>
                             </td>
                             <td className={cn("py-3 px-4 text-right font-mono font-bold tabular-nums",
                               Number(log.change_qty) > 0 ? "text-success" : "text-danger"
