@@ -91,6 +91,26 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
     }
   }
 
+  async function fetchStockStatus() {
+    const { data } = await supabase
+      .from('stock_recipes')
+      .select('menu_item_id, stock_items(id, qty, min_threshold)');
+    if (data) {
+      const map: Record<string, { isLow: boolean; isOut: boolean }> = {};
+      data.forEach((r: any) => {
+        const menuId = r.menu_item_id;
+        const si = r.stock_items;
+        if (!si) return;
+        const qty = Number(si.qty);
+        const threshold = Number(si.min_threshold);
+        if (!map[menuId]) map[menuId] = { isLow: false, isOut: false };
+        if (qty <= 0) map[menuId].isOut = true;
+        else if (qty <= threshold) map[menuId].isLow = true;
+      });
+      setStockStatus(map);
+    }
+  }
+
   useEffect(() => {
     if (orderId) loadExistingOrder();
     else setServedItems([]);
