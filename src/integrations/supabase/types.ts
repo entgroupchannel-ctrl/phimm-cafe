@@ -431,6 +431,147 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_balances: {
+        Row: {
+          entitlement: number | null
+          id: string
+          leave_type_id: string | null
+          remaining: number | null
+          staff_id: string | null
+          used: number | null
+          year: number
+        }
+        Insert: {
+          entitlement?: number | null
+          id?: string
+          leave_type_id?: string | null
+          remaining?: number | null
+          staff_id?: string | null
+          used?: number | null
+          year: number
+        }
+        Update: {
+          entitlement?: number | null
+          id?: string
+          leave_type_id?: string | null
+          remaining?: number | null
+          staff_id?: string | null
+          used?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          created_at: string | null
+          days_count: number
+          end_date: string
+          id: string
+          leave_type_id: string | null
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_note: string | null
+          staff_id: string | null
+          start_date: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_count?: number
+          end_date: string
+          id?: string
+          leave_type_id?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          staff_id?: string | null
+          start_date: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_count?: number
+          end_date?: string
+          id?: string
+          leave_type_id?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_note?: string | null
+          staff_id?: string | null
+          start_date?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_types: {
+        Row: {
+          color: string | null
+          days_per_year: number | null
+          deduct_from_pay: boolean | null
+          icon: string | null
+          id: string
+          is_paid: boolean | null
+          name_en: string
+          name_th: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          days_per_year?: number | null
+          deduct_from_pay?: boolean | null
+          icon?: string | null
+          id?: string
+          is_paid?: boolean | null
+          name_en: string
+          name_th: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          days_per_year?: number | null
+          deduct_from_pay?: boolean | null
+          icon?: string | null
+          id?: string
+          is_paid?: boolean | null
+          name_en?: string
+          name_th?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       loyalty_tiers: {
         Row: {
           color: string | null
@@ -993,6 +1134,135 @@ export type Database = {
           },
         ]
       }
+      payroll_items: {
+        Row: {
+          bonus: number | null
+          bonus_note: string | null
+          days_absent: number | null
+          days_late: number | null
+          days_leave: number | null
+          days_worked: number | null
+          deduction_late: number | null
+          deduction_leave: number | null
+          deduction_note: string | null
+          deduction_other: number | null
+          deduction_social_security: number | null
+          deduction_tax: number | null
+          gross_pay: number | null
+          id: string
+          net_pay: number | null
+          ot_hours: number | null
+          ot_pay: number | null
+          period_id: string | null
+          regular_hours: number | null
+          regular_pay: number | null
+          staff_id: string | null
+        }
+        Insert: {
+          bonus?: number | null
+          bonus_note?: string | null
+          days_absent?: number | null
+          days_late?: number | null
+          days_leave?: number | null
+          days_worked?: number | null
+          deduction_late?: number | null
+          deduction_leave?: number | null
+          deduction_note?: string | null
+          deduction_other?: number | null
+          deduction_social_security?: number | null
+          deduction_tax?: number | null
+          gross_pay?: number | null
+          id?: string
+          net_pay?: number | null
+          ot_hours?: number | null
+          ot_pay?: number | null
+          period_id?: string | null
+          regular_hours?: number | null
+          regular_pay?: number | null
+          staff_id?: string | null
+        }
+        Update: {
+          bonus?: number | null
+          bonus_note?: string | null
+          days_absent?: number | null
+          days_late?: number | null
+          days_leave?: number | null
+          days_worked?: number | null
+          deduction_late?: number | null
+          deduction_leave?: number | null
+          deduction_note?: string | null
+          deduction_other?: number | null
+          deduction_social_security?: number | null
+          deduction_tax?: number | null
+          gross_pay?: number | null
+          id?: string
+          net_pay?: number | null
+          ot_hours?: number | null
+          ot_pay?: number | null
+          period_id?: string | null
+          regular_hours?: number | null
+          regular_pay?: number | null
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_items_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          end_date: string
+          id: string
+          note: string | null
+          paid_at: string | null
+          period_name: string
+          start_date: string
+          status: string | null
+          total_amount: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_name: string
+          start_date: string
+          status?: string | null
+          total_amount?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_name?: string
+          start_date?: string
+          status?: string | null
+          total_amount?: number | null
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           category: string
@@ -1154,6 +1424,30 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_publishes: {
+        Row: {
+          id: string
+          notify_method: string[] | null
+          published_at: string | null
+          published_by: string | null
+          week_start: string
+        }
+        Insert: {
+          id?: string
+          notify_method?: string[] | null
+          published_at?: string | null
+          published_by?: string | null
+          week_start: string
+        }
+        Update: {
+          id?: string
+          notify_method?: string[] | null
+          published_at?: string | null
+          published_by?: string | null
+          week_start?: string
+        }
+        Relationships: []
+      }
       shop_settings: {
         Row: {
           address: string | null
@@ -1213,48 +1507,93 @@ export type Database = {
           auth_uid: string | null
           avatar_emoji: string | null
           avatar_url: string | null
+          bank_account: string | null
+          bank_name: string | null
+          birth_date: string | null
           created_at: string | null
+          daily_rate: number | null
           email: string | null
+          emergency_contact: string | null
+          emergency_phone: string | null
           hourly_rate: number | null
           id: string
           is_active: boolean | null
+          line_token: string | null
+          line_user_id: string | null
+          monthly_salary: number | null
           name: string
           nickname: string | null
+          ot_rate_multiplier: number | null
           phone: string | null
           pin: string | null
+          push_subscription: Json | null
           role_id: string
+          salary_type: string | null
+          social_security_id: string | null
+          start_date: string | null
+          tax_id: string | null
           updated_at: string | null
         }
         Insert: {
           auth_uid?: string | null
           avatar_emoji?: string | null
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
           created_at?: string | null
+          daily_rate?: number | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_phone?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          line_token?: string | null
+          line_user_id?: string | null
+          monthly_salary?: number | null
           name: string
           nickname?: string | null
+          ot_rate_multiplier?: number | null
           phone?: string | null
           pin?: string | null
+          push_subscription?: Json | null
           role_id: string
+          salary_type?: string | null
+          social_security_id?: string | null
+          start_date?: string | null
+          tax_id?: string | null
           updated_at?: string | null
         }
         Update: {
           auth_uid?: string | null
           avatar_emoji?: string | null
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
           created_at?: string | null
+          daily_rate?: number | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_phone?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          line_token?: string | null
+          line_user_id?: string | null
+          monthly_salary?: number | null
           name?: string
           nickname?: string | null
+          ot_rate_multiplier?: number | null
           phone?: string | null
           pin?: string | null
+          push_subscription?: Json | null
           role_id?: string
+          salary_type?: string | null
+          social_security_id?: string | null
+          start_date?: string | null
+          tax_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1263,6 +1602,47 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_notifications: {
+        Row: {
+          body: string | null
+          channel: string | null
+          id: string
+          is_read: boolean | null
+          sent_at: string | null
+          staff_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          body?: string | null
+          channel?: string | null
+          id?: string
+          is_read?: boolean | null
+          sent_at?: string | null
+          staff_id?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          body?: string | null
+          channel?: string | null
+          id?: string
+          is_read?: boolean | null
+          sent_at?: string | null
+          staff_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notifications_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -1307,31 +1687,70 @@ export type Database = {
       }
       staff_sessions: {
         Row: {
+          approved_by: string | null
           break_minutes: number | null
           clock_in: string
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_in_method: string | null
           clock_out: string | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
           id: string
+          is_late: boolean | null
+          late_minutes: number | null
           note: string | null
+          ot_amount: number | null
+          ot_minutes: number | null
+          regular_hours: number | null
+          shift_status: string | null
           staff_id: string
           total_hours: number | null
+          total_pay: number | null
         }
         Insert: {
+          approved_by?: string | null
           break_minutes?: number | null
           clock_in?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_in_method?: string | null
           clock_out?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           id?: string
+          is_late?: boolean | null
+          late_minutes?: number | null
           note?: string | null
+          ot_amount?: number | null
+          ot_minutes?: number | null
+          regular_hours?: number | null
+          shift_status?: string | null
           staff_id: string
           total_hours?: number | null
+          total_pay?: number | null
         }
         Update: {
+          approved_by?: string | null
           break_minutes?: number | null
           clock_in?: string
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_in_method?: string | null
           clock_out?: string | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           id?: string
+          is_late?: boolean | null
+          late_minutes?: number | null
           note?: string | null
+          ot_amount?: number | null
+          ot_minutes?: number | null
+          regular_hours?: number | null
+          shift_status?: string | null
           staff_id?: string
           total_hours?: number | null
+          total_pay?: number | null
         }
         Relationships: [
           {
@@ -1637,6 +2056,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      calculate_payroll: { Args: { p_period_id: string }; Returns: undefined }
       earn_loyalty_points: {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
