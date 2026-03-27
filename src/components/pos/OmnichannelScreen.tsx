@@ -410,9 +410,9 @@ function StatBox({ icon, label, value }: { icon: string; label: string; value: s
 function StatusBadge({ status }: { status: string | null }) {
   const map: Record<string, { label: string; cls: string }> = {
     open: { label: "🆕 ใหม่", cls: "bg-destructive/10 text-destructive border-destructive/30" },
-    confirmed: { label: "✅ ยืนยัน", cls: "bg-primary/10 text-primary border-primary/30" },
-    preparing: { label: "🔥 กำลังทำ", cls: "bg-warning/10 text-warning border-warning/30" },
+    cooking: { label: "🔥 กำลังทำ", cls: "bg-warning/10 text-warning border-warning/30" },
     ready: { label: "📦 พร้อม", cls: "bg-primary/10 text-primary border-primary/30" },
+    served: { label: "🍽 เสิร์ฟแล้ว", cls: "bg-muted text-muted-foreground border-border" },
     paid: { label: "💰 ชำระแล้ว", cls: "bg-primary/10 text-primary border-primary/30" },
   };
   const s = map[status || ""] || { label: status || "—", cls: "bg-muted text-muted-foreground border-border" };
