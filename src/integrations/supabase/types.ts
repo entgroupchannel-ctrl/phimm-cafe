@@ -96,6 +96,50 @@ export type Database = {
           },
         ]
       }
+      ai_stock_insights: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string | null
+          data: Json
+          id: string
+          insight_type: string
+          is_acknowledged: boolean | null
+          severity: string | null
+          stock_item_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          data?: Json
+          id?: string
+          insight_type: string
+          is_acknowledged?: boolean | null
+          severity?: string | null
+          stock_item_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          data?: Json
+          id?: string
+          insight_type?: string
+          is_acknowledged?: boolean | null
+          severity?: string | null
+          stock_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_stock_insights_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allergen_types: {
         Row: {
           icon: string | null
@@ -1858,6 +1902,90 @@ export type Database = {
           },
         ]
       }
+      stock_count_items: {
+        Row: {
+          actual_qty: number | null
+          diff_value: number | null
+          difference: number | null
+          id: string
+          note: string | null
+          session_id: string | null
+          stock_item_id: string | null
+          system_qty: number
+        }
+        Insert: {
+          actual_qty?: number | null
+          diff_value?: number | null
+          difference?: number | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          stock_item_id?: string | null
+          system_qty: number
+        }
+        Update: {
+          actual_qty?: number | null
+          diff_value?: number | null
+          difference?: number | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          stock_item_id?: string | null
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_count_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "stock_count_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_items_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_count_sessions: {
+        Row: {
+          completed_at: string | null
+          counted_by: string | null
+          id: string
+          items_with_diff: number | null
+          note: string | null
+          started_at: string | null
+          status: string | null
+          total_diff_value: number | null
+          total_items: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          counted_by?: string | null
+          id?: string
+          items_with_diff?: number | null
+          note?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_diff_value?: number | null
+          total_items?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          counted_by?: string | null
+          id?: string
+          items_with_diff?: number | null
+          note?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_diff_value?: number | null
+          total_items?: number | null
+        }
+        Relationships: []
+      }
       stock_items: {
         Row: {
           category: string | null
@@ -1865,9 +1993,12 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_restocked_at: string | null
+          lead_time_days: number | null
           min_threshold: number | null
           name: string
           qty: number
+          safety_factor: number | null
+          shelf_life_days: number | null
           supplier: string | null
           supplier_id: string | null
           unit: string
@@ -1879,9 +2010,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_restocked_at?: string | null
+          lead_time_days?: number | null
           min_threshold?: number | null
           name: string
           qty?: number
+          safety_factor?: number | null
+          shelf_life_days?: number | null
           supplier?: string | null
           supplier_id?: string | null
           unit: string
@@ -1893,9 +2027,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_restocked_at?: string | null
+          lead_time_days?: number | null
           min_threshold?: number | null
           name?: string
           qty?: number
+          safety_factor?: number | null
+          shelf_life_days?: number | null
           supplier?: string | null
           supplier_id?: string | null
           unit?: string
