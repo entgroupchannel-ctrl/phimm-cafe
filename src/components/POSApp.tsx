@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { LoginScreen } from "./pos/LoginScreen";
 import { OrderScreen, CartItem } from "./pos/OrderScreen";
 import { PaymentScreen } from "./pos/PaymentScreen";
@@ -30,7 +31,7 @@ import {
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings, DollarSign,
   Sun, Moon, Menu, LayoutGrid, LogOut,
-  Armchair, Flame, Route,
+  Armchair, Flame, Route, MoreHorizontal, X,
 } from "lucide-react";
 
 type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "stock-ai" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
@@ -83,6 +84,29 @@ const NAV_GROUPS = [
   },
 ];
 
+const SCREEN_TITLES: Record<Screen, string> = {
+  tables: "แผนผังโต๊ะ",
+  order: "ออเดอร์",
+  payment: "ชำระเงิน",
+  kds: "จอครัว",
+  menu: "จัดการเมนู",
+  stock: "สต๊อก",
+  "stock-ai": "AI สต๊อก",
+  crm: "ลูกค้า",
+  staff: "พนักงาน",
+  dashboard: "Dashboard",
+  ai: "AI",
+  nutrition: "โภชนาการ",
+  kiosk: "Kiosk",
+  omni: "Omnichannel",
+  qr: "QR โต๊ะ",
+  settings: "ตั้งค่า",
+  "admin-tables": "จัดการโต๊ะ",
+  "admin-stations": "สถานีครัว",
+  "admin-routing": "Routing",
+  payroll: "Payroll",
+};
+
 // ── Dark Mode Toggle ───────────────────────────────────────
 function DarkModeToggle() {
   const [dark, setDark] = useState(() =>
@@ -110,7 +134,7 @@ function DarkModeToggle() {
   );
 }
 
-// ── Sidebar Nav ────────────────────────────────────────────
+// ── Sidebar Nav (Desktop) ──────────────────────────────────
 function Sidebar({
   screen, setScreen, collapsed, setCollapsed,
 }: {
@@ -225,9 +249,132 @@ function Sidebar({
   );
 }
 
+// ── Bottom Nav (Mobile) ────────────────────────────────────
+const BOTTOM_TABS: { key: Screen; icon: typeof LayoutGrid; label: string }[] = [
+  { key: "tables",    icon: LayoutGrid,      label: "โต๊ะ" },
+  { key: "order",     icon: ShoppingCart,     label: "ออเดอร์" },
+  { key: "kds",       icon: ChefHat,         label: "ครัว" },
+  { key: "dashboard", icon: LayoutDashboard,  label: "Dashboard" },
+];
+
+function BottomNav({
+  screen, setScreen, permissions,
+}: {
+  screen: Screen;
+  setScreen: (s: Screen) => void;
+  permissions: string[];
+}) {
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const visibleTabs = BOTTOM_TABS.filter(t => {
+    const navItem = NAV_GROUPS.flatMap(g => g.items).find(i => i.key === t.key);
+    return navItem ? permissions.includes(navItem.permission) : false;
+  });
+
+  const isMoreActive = !visibleTabs.some(t => t.key === screen);
+
+  return (
+    <>
+      {/* More overlay */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col animate-in fade-in duration-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-[15px] font-bold text-foreground">เมนูทั้งหมด</span>
+            <button onClick={() => setMoreOpen(false)} className="w-8 h-8 rounded-xl flex items-center justify-center bg-muted text-muted-foreground hover:text-foreground">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {NAV_GROUPS.map(group => {
+              const visibleItems = group.items.filter(item => permissions.includes(item.permission));
+              if (visibleItems.length === 0) return null;
+              return (
+                <div key={group.label}>
+                  <div className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/60 mb-2 px-1">
+                    {group.label}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {visibleItems.map(item => {
+                      const Icon = item.icon;
+                      const active = screen === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => { setScreen(item.key); setMoreOpen(false); }}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all min-h-[64px]",
+                            active
+                              ? "bg-primary/10 border-primary/30 text-primary"
+                              : "bg-[hsl(var(--surface))] border-border text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
+                          <span className="text-[10px] font-semibold">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom bar */}
+      <nav
+        className="shrink-0 flex items-center justify-around bg-[hsl(var(--surface))] border-t border-border"
+        style={{ height: 56, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        {visibleTabs.map(tab => {
+          const Icon = tab.icon;
+          const active = screen === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setScreen(tab.key)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors select-none",
+                active ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {active && <div className="w-6 h-0.5 rounded-full bg-primary mb-0.5" />}
+              <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
+              <span className="text-[9px] font-semibold">{tab.label}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setMoreOpen(true)}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors select-none",
+            isMoreActive ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          {isMoreActive && <div className="w-6 h-0.5 rounded-full bg-primary mb-0.5" />}
+          <MoreHorizontal size={20} strokeWidth={isMoreActive ? 2.2 : 1.6} />
+          <span className="text-[9px] font-semibold">เพิ่มเติม</span>
+        </button>
+      </nav>
+    </>
+  );
+}
+
+// ── Mobile Header ──────────────────────────────────────────
+function MobileHeader({ screen }: { screen: Screen }) {
+  return (
+    <div className="shrink-0 flex items-center justify-between px-4 bg-[hsl(var(--surface))] border-b border-border" style={{ height: 40 }}>
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-bold text-foreground">{SCREEN_TITLES[screen] || screen}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── App ────────────────────────────────────────────────────
 export function POSApp() {
   const { isAuthenticated, isLoading, permissions } = useAuth();
+  const isMobile = useIsMobile();
   const [screen, setScreen]       = useState<Screen>("tables");
   const [collapsed, setCollapsed] = useState(false);
   const [activeTable, setActiveTable] = useState<string>("");
@@ -277,6 +424,68 @@ export function POSApp() {
     setScreen("order");
   };
 
+  const screenContent = (
+    <>
+      {screen === "tables"    && <TableMapScreen onSelectTable={handleSelectTable} />}
+      {screen === "order"     && (
+        <OrderScreen
+          cart={cart}
+          setCart={setCart}
+          onPay={() => setScreen("payment")}
+          onBack={() => { setScreen("tables"); setCart([]); setCurrentOrderId(null); setActiveTableId(null); }}
+          tableLabel={activeTable}
+          tableId={activeTableId}
+          orderId={currentOrderId}
+          setOrderId={setCurrentOrderId}
+        />
+      )}
+      {screen === "payment"   && (
+        <PaymentScreen
+          cart={cart}
+          orderId={currentOrderId}
+          tableId={activeTableId}
+          onSuccess={() => {
+            setScreen("tables");
+            setCart([]);
+            setCurrentOrderId(null);
+            setActiveTableId(null);
+          }}
+        />
+      )}
+      {screen === "kds"       && <KDSScreen />}
+      {screen === "menu"      && <MenuMgmtScreen />}
+      {screen === "stock"     && <StockScreen />}
+      {screen === "crm"       && <CRMScreen />}
+      {screen === "staff"     && <StaffScreen />}
+      {screen === "dashboard" && <DashboardScreen />}
+      {screen === "ai"        && <AIScreen />}
+      {screen === "nutrition" && <NutritionScreen />}
+      {screen === "kiosk"     && <KioskScreen />}
+      {screen === "omni"      && <OmnichannelScreen />}
+      {screen === "qr"        && <QRGeneratorScreen />}
+      {screen === "settings"  && <SettingsScreen />}
+      {screen === "admin-tables"   && <TableLayoutAdmin />}
+      {screen === "admin-stations" && <KitchenStationAdmin />}
+      {screen === "admin-routing"  && <MenuRoutingAdmin />}
+      {screen === "payroll"        && <PayrollScreen />}
+      {screen === "stock-ai"       && <StockAIScreen />}
+    </>
+  );
+
+  // ── Mobile layout ──
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground font-sans">
+        <MobileHeader screen={screen} />
+        <main className="flex-1 flex overflow-hidden min-h-0">
+          {screenContent}
+        </main>
+        <BottomNav screen={screen} setScreen={setScreen} permissions={permissions} />
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──
   return (
     <div className="h-screen flex overflow-hidden bg-background text-foreground font-sans">
       <Sidebar
@@ -285,51 +494,8 @@ export function POSApp() {
         collapsed={collapsed}
         setCollapsed={setCollapsed}
       />
-
       <main className="flex flex-1 overflow-hidden bg-background min-w-0">
-        {screen === "tables"    && <TableMapScreen onSelectTable={handleSelectTable} />}
-        {screen === "order"     && (
-          <OrderScreen
-            cart={cart}
-            setCart={setCart}
-            onPay={() => setScreen("payment")}
-            onBack={() => { setScreen("tables"); setCart([]); setCurrentOrderId(null); setActiveTableId(null); }}
-            tableLabel={activeTable}
-            tableId={activeTableId}
-            orderId={currentOrderId}
-            setOrderId={setCurrentOrderId}
-          />
-        )}
-        {screen === "payment"   && (
-          <PaymentScreen
-            cart={cart}
-            orderId={currentOrderId}
-            tableId={activeTableId}
-            onSuccess={() => {
-              setScreen("tables");
-              setCart([]);
-              setCurrentOrderId(null);
-              setActiveTableId(null);
-            }}
-          />
-        )}
-        {screen === "kds"       && <KDSScreen />}
-        {screen === "menu"      && <MenuMgmtScreen />}
-        {screen === "stock"     && <StockScreen />}
-        {screen === "crm"       && <CRMScreen />}
-        {screen === "staff"     && <StaffScreen />}
-        {screen === "dashboard" && <DashboardScreen />}
-        {screen === "ai"        && <AIScreen />}
-        {screen === "nutrition" && <NutritionScreen />}
-        {screen === "kiosk"     && <KioskScreen />}
-        {screen === "omni"      && <OmnichannelScreen />}
-        {screen === "qr"        && <QRGeneratorScreen />}
-        {screen === "settings"  && <SettingsScreen />}
-        {screen === "admin-tables"   && <TableLayoutAdmin />}
-        {screen === "admin-stations" && <KitchenStationAdmin />}
-        {screen === "admin-routing"  && <MenuRoutingAdmin />}
-        {screen === "payroll"        && <PayrollScreen />}
-        {screen === "stock-ai"       && <StockAIScreen />}
+        {screenContent}
       </main>
     </div>
   );
