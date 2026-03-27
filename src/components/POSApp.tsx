@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   ShoppingCart, CreditCard, Monitor, QrCode,
-  ChefHat, BookOpen, Package,
+  ChefHat, BookOpen, Package, Brain,
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings, DollarSign,
   Sun, Moon, Menu, LayoutGrid, LogOut,
@@ -329,6 +329,7 @@ export function POSApp() {
         {screen === "admin-stations" && <KitchenStationAdmin />}
         {screen === "admin-routing"  && <MenuRoutingAdmin />}
         {screen === "payroll"        && <PayrollScreen />}
+        {screen === "stock-ai"       && <StockAIScreen />}
       </main>
     </div>
   );
