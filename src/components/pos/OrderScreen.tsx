@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Search, Minus, Plus, Trash2, ChefHat, Receipt, ChevronLeft, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Search, Minus, Plus, Trash2, ChefHat, Receipt, ChevronLeft, X, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -53,6 +54,7 @@ interface ServedItem {
 }
 
 export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", tableId, orderId, setOrderId }: OrderScreenProps) {
+  const isMobile = useIsMobile();
   const [activeCat, setActiveCat] = useState("ทั้งหมด");
   const [search, setSearch] = useState("");
   const [menuItems, setMenuItems] = useState<MenuItemData[]>([]);
@@ -60,6 +62,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
   const [servedItems, setServedItems] = useState<ServedItem[]>([]);
   const [sending, setSending] = useState(false);
   const [stockStatus, setStockStatus] = useState<Record<string, { isLow: boolean; isOut: boolean }>>({});
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { toast } = useToast();
 
   // Customization modal state
