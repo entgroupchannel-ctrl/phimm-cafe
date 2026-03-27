@@ -357,7 +357,7 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className={cn("flex flex-1 overflow-hidden", isMobile ? "flex-col" : "flex-row")}>
         {/* Category sidebar (vertical on desktop, horizontal on mobile) */}
         {isMobile ? (
           <div className="shrink-0 bg-card border-b border-border overflow-x-auto scrollbar-hide">
