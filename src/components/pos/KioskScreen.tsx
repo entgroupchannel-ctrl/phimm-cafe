@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ─────────────────────────────────────────────────
 interface KioskMenuItem {
@@ -134,27 +135,34 @@ function CustomizeModal({
     });
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-2xl shadow-[0_24px_60px_rgba(0,0,0,0.15)] overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+      <div className={cn("bg-card border border-border rounded-3xl w-full shadow-[0_24px_60px_rgba(0,0,0,0.15)] overflow-hidden", isMobile ? "max-w-full mx-2 max-h-[90vh] flex flex-col" : "max-w-2xl")}>
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
           <button onClick={onClose} className="w-9 h-9 rounded-xl border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-[18px]">←</button>
           <div className="text-[17px] font-bold text-foreground">ปรับแต่ง: {item.name}</div>
         </div>
 
-        <div className="flex gap-0 max-h-[70vh] overflow-hidden">
-          <div className="w-52 shrink-0 p-6 border-r border-border flex flex-col items-center text-center bg-background/50">
-            <div className="text-[64px] leading-none mb-3">{item.img}</div>
-            <div className="text-[15px] font-extrabold text-foreground mb-1">{item.name}</div>
-            <div className="text-[12px] text-muted-foreground mb-3">{item.desc}</div>
-            <div className="flex flex-wrap gap-1 justify-center mb-3">
-              {item.cal && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>}
-              {item.allergens.map(a => (
-                <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">⚠️ {a}</span>
-              ))}
+        <div className={cn("flex gap-0 overflow-hidden", isMobile ? "flex-col flex-1 min-h-0" : "max-h-[70vh]")}>
+          <div className={cn("shrink-0 border-border flex flex-col items-center text-center bg-background/50",
+            isMobile ? "px-4 py-3 flex-row gap-3 border-b" : "w-52 p-6 border-r")}>
+            <div className={cn("leading-none", isMobile ? "text-[40px]" : "text-[64px] mb-3")}>{item.img}</div>
+            <div className={cn(isMobile ? "text-left flex-1 min-w-0" : "")}>
+              <div className="text-[15px] font-extrabold text-foreground mb-1">{item.name}</div>
+              {!isMobile && <div className="text-[12px] text-muted-foreground mb-3">{item.desc}</div>}
+              <div className={cn("flex flex-wrap gap-1", isMobile ? "" : "justify-center mb-3")}>
+                {item.cal && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>}
+                {item.allergens.map(a => (
+                  <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">⚠️ {a}</span>
+                ))}
+              </div>
             </div>
-            <div className="font-mono text-[24px] font-extrabold text-primary">฿{total}</div>
-            {priceAdd > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{priceAdd}</div>}
+            <div className="shrink-0">
+              <div className="font-mono text-[24px] font-extrabold text-primary">฿{total}</div>
+              {priceAdd > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{priceAdd}</div>}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -217,7 +225,7 @@ function CustomizeModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-border">
+        <div className="px-6 py-4 border-t border-border shrink-0">
           <button onClick={() => {
             onAdd({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty, note, options: selectedOptions, optionsText, priceAdd });
             onClose();
@@ -241,9 +249,11 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
   optionGroups: Record<string, OptionGroup[]>;
   allergensList: string[];
 }) {
+  const isMobile = useIsMobile();
   const [activeCat, setActiveCat] = useState("ทั้งหมด");
   const [allergenFilter, setAllergenFilter] = useState<string[]>([]);
   const [customizing, setCustomizing] = useState<KioskMenuItem | null>(null);
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   const filtered = menuItems.filter(m => {
     if (activeCat === "⭐ ยอดนิยม") return m.popular;
@@ -271,9 +281,58 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
   const total = cart.reduce((s, c) => s + (c.price + c.priceAdd) * c.qty, 0);
   const totalItems = cart.reduce((s, c) => s + c.qty, 0);
 
+  // ── Cart panel content (shared between desktop sidebar & mobile overlay) ──
+  const cartContent = (
+    <>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
+        <span className="text-[14px] font-extrabold text-foreground">🛒 ตะกร้า</span>
+        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">{totalItems} ชิ้น</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {cart.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pb-8">
+            <div className="text-[36px] mb-2">🛒</div>
+            <div className="text-[13px]">แตะเมนูเพื่อเริ่มสั่ง</div>
+          </div>
+        ) : cart.map(item => (
+          <div key={item.cartId} className="flex items-center gap-2 px-2 py-2 rounded-xl border border-border bg-background">
+            <span className="text-[22px]">{item.img}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-semibold text-foreground truncate">{item.name}</div>
+              {item.optionsText && <div className="text-[10px] text-muted-foreground truncate">{item.optionsText}</div>}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={(e) => { e.stopPropagation(); removeItem(item.cartId); }}
+                className="w-5 h-5 rounded-md border border-border bg-card text-muted-foreground text-[13px] flex items-center justify-center hover:text-danger transition-colors">−</button>
+              <span className="font-mono text-[12px] font-bold w-4 text-center tabular-nums">{item.qty}</span>
+              <button onClick={(e) => { e.stopPropagation(); incItem(item.cartId); }}
+                className="w-5 h-5 rounded-md gradient-primary text-white text-[13px] flex items-center justify-center">+</button>
+            </div>
+            <span className="font-mono text-[12px] font-bold text-primary w-12 text-right shrink-0 tabular-nums">฿{(item.price + item.priceAdd) * item.qty}</span>
+          </div>
+        ))}
+      </div>
+      <div className="px-4 py-3 border-t border-border shrink-0">
+        <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+          <span>รวม {totalItems} ชิ้น</span>
+          <span>VAT 7% รวมแล้ว</span>
+        </div>
+        <div className="flex justify-between items-baseline mb-3">
+          <span className="text-[15px] font-extrabold text-foreground">ยอดรวม</span>
+          <span className="font-mono text-[22px] font-black text-primary tabular-nums">฿{total.toLocaleString()}</span>
+        </div>
+        <button onClick={() => { setShowMobileCart(false); onCheckout(); }} disabled={cart.length === 0}
+          className="w-full py-3 rounded-2xl text-[14px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
+          ยืนยันออเดอร์ →
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="px-5 py-3 border-b border-border bg-card flex items-center justify-between shrink-0">
+      {/* Header bar */}
+      <div className={cn("px-5 py-3 border-b border-border bg-card shrink-0", isMobile ? "flex flex-col gap-2" : "flex items-center justify-between")}>
         <div className="flex items-center gap-2">
           <span className={cn(
             "px-2.5 py-0.5 rounded-full text-[11px] font-bold border",
@@ -283,13 +342,13 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
           </span>
           <span className="text-[14px] font-bold text-foreground">เลือกเมนู</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">กรองสารก่อภูมิแพ้:</span>
+        <div className={cn("flex items-center gap-1.5", isMobile && "overflow-x-auto scrollbar-hide pb-0.5")}>
+          <span className="text-[11px] text-muted-foreground shrink-0">กรองสารก่อภูมิแพ้:</span>
           {allergensList.map(a => {
             const on = allergenFilter.includes(a);
             return (
               <button key={a} onClick={() => setAllergenFilter(prev => on ? prev.filter(x => x !== a) : [...prev, a])}
-                className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors",
+                className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors shrink-0",
                   on ? "border-danger/50 bg-danger/10 text-danger" : "border-border bg-background text-muted-foreground hover:border-border")}>
                 {on ? "🚫 " : ""}{a}
               </button>
@@ -298,97 +357,104 @@ function MenuScreen({ cart, setCart, orderType, onCheckout, menuItems, categorie
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-[120px] shrink-0 bg-card border-r border-border p-2 flex flex-col gap-1 overflow-y-auto">
-          {categories.map(c => (
-            <button key={c} onClick={() => setActiveCat(c)}
-              className={cn("px-2 py-2.5 rounded-xl text-[12px] font-semibold text-left transition-all",
-                activeCat === c ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {allergenFilter.length > 0 && (
-            <div className="px-3 py-2 rounded-xl bg-danger/5 border border-danger/20 text-[12px] text-danger font-semibold mb-3">
-              🛡️ กรองเมนูที่มี: {allergenFilter.join(", ")} ออกแล้ว — ปลอดภัยสำหรับคุณ
+      <div className={cn("flex flex-1 overflow-hidden", isMobile ? "flex-col" : "flex-row")}>
+        {/* Category sidebar (vertical on desktop, horizontal on mobile) */}
+        {isMobile ? (
+          <div className="shrink-0 bg-card border-b border-border overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1 p-2">
+              {categories.map(c => (
+                <button key={c} onClick={() => setActiveCat(c)}
+                  className={cn("px-3 py-2 rounded-xl text-[12px] font-semibold whitespace-nowrap transition-all",
+                    activeCat === c ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                  {c}
+                </button>
+              ))}
             </div>
-          )}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-            {filtered.map(item => {
-              const inCart = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
-              return (
-                <div key={item.id} onClick={() => handleItemClick(item)}
-                  className={cn(
-                    "relative bg-card border-2 rounded-2xl p-3.5 cursor-pointer transition-all hover:shadow-card-hover",
-                    inCart > 0 ? "border-primary shadow-primary/20 shadow-md" : "border-border shadow-card hover:border-border"
-                  )}>
-                  {inCart > 0 && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[12px] font-extrabold flex items-center justify-center shadow-primary">{inCart}</div>
-                  )}
-                  {item.popular && (
-                    <div className="absolute top-2 left-2">
-                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-warning/10 text-warning border border-warning/30">🔥 HOT</span>
-                    </div>
-                  )}
-                  <div className="text-center mt-3">
-                    <div className="text-[44px] leading-none mb-2">{item.img}</div>
-                    <div className="text-[13px] font-bold text-foreground leading-tight mb-1">{item.name}</div>
-                    {item.cal && <div className="text-[10px] text-muted-foreground mb-2">{item.cal} cal</div>}
-                    <div className="font-mono text-[17px] font-extrabold text-primary">฿{item.price}</div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
-        </div>
-
-        <div className="w-[280px] shrink-0 border-l border-border bg-card flex flex-col">
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
-            <span className="text-[14px] font-extrabold text-foreground">🛒 ตะกร้า</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">{totalItems} ชิ้น</span>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pb-8">
-                <div className="text-[36px] mb-2">🛒</div>
-                <div className="text-[13px]">แตะเมนูเพื่อเริ่มสั่ง</div>
-              </div>
-            ) : cart.map(item => (
-              <div key={item.cartId} className="flex items-center gap-2 px-2 py-2 rounded-xl border border-border bg-background">
-                <span className="text-[22px]">{item.img}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold text-foreground truncate">{item.name}</div>
-                  {item.optionsText && <div className="text-[10px] text-muted-foreground truncate">{item.optionsText}</div>}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={(e) => { e.stopPropagation(); removeItem(item.cartId); }}
-                    className="w-5 h-5 rounded-md border border-border bg-card text-muted-foreground text-[13px] flex items-center justify-center hover:text-danger transition-colors">−</button>
-                  <span className="font-mono text-[12px] font-bold w-4 text-center tabular-nums">{item.qty}</span>
-                  <button onClick={(e) => { e.stopPropagation(); incItem(item.cartId); }}
-                    className="w-5 h-5 rounded-md gradient-primary text-white text-[13px] flex items-center justify-center">+</button>
-                </div>
-                <span className="font-mono text-[12px] font-bold text-primary w-12 text-right shrink-0 tabular-nums">฿{(item.price + item.priceAdd) * item.qty}</span>
-              </div>
+        ) : (
+          <div className="w-[120px] shrink-0 bg-card border-r border-border p-2 flex flex-col gap-1 overflow-y-auto">
+            {categories.map(c => (
+              <button key={c} onClick={() => setActiveCat(c)}
+                className={cn("px-2 py-2.5 rounded-xl text-[12px] font-semibold text-left transition-all",
+                  activeCat === c ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                {c}
+              </button>
             ))}
           </div>
-          <div className="px-4 py-3 border-t border-border shrink-0">
-            <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-              <span>รวม {totalItems} ชิ้น</span>
-              <span>VAT 7% รวมแล้ว</span>
+        )}
+
+        {/* Menu + Cart area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Menu grid */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {allergenFilter.length > 0 && (
+              <div className="px-3 py-2 rounded-xl bg-danger/5 border border-danger/20 text-[12px] text-danger font-semibold mb-3">
+                🛡️ กรองเมนูที่มี: {allergenFilter.join(", ")} ออกแล้ว — ปลอดภัยสำหรับคุณ
+              </div>
+            )}
+            <div className={cn("grid gap-3", isMobile ? "grid-cols-2" : "grid-cols-[repeat(auto-fill,minmax(160px,1fr))]")}>
+              {filtered.map(item => {
+                const inCart = cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0);
+                return (
+                  <div key={item.id} onClick={() => handleItemClick(item)}
+                    className={cn(
+                      "relative bg-card border-2 rounded-2xl p-3.5 cursor-pointer transition-all hover:shadow-card-hover",
+                      inCart > 0 ? "border-primary shadow-primary/20 shadow-md" : "border-border shadow-card hover:border-border"
+                    )}>
+                    {inCart > 0 && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full gradient-primary text-white text-[12px] font-extrabold flex items-center justify-center shadow-primary">{inCart}</div>
+                    )}
+                    {item.popular && (
+                      <div className="absolute top-2 left-2">
+                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-warning/10 text-warning border border-warning/30">🔥 HOT</span>
+                      </div>
+                    )}
+                    <div className="text-center mt-3">
+                      <div className={cn("leading-none mb-2", isMobile ? "text-[36px]" : "text-[44px]")}>{item.img}</div>
+                      <div className="text-[13px] font-bold text-foreground leading-tight mb-1">{item.name}</div>
+                      {item.cal && <div className="text-[10px] text-muted-foreground mb-2">{item.cal} cal</div>}
+                      <div className="font-mono text-[17px] font-extrabold text-primary">฿{item.price}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex justify-between items-baseline mb-3">
-              <span className="text-[15px] font-extrabold text-foreground">ยอดรวม</span>
-              <span className="font-mono text-[22px] font-black text-primary tabular-nums">฿{total.toLocaleString()}</span>
-            </div>
-            <button onClick={onCheckout} disabled={cart.length === 0}
-              className="w-full py-3 rounded-2xl text-[14px] font-bold text-white gradient-primary shadow-primary hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-              ยืนยันออเดอร์ →
-            </button>
+            {/* Spacer for floating cart bar on mobile */}
+            {isMobile && cart.length > 0 && <div className="h-20" />}
           </div>
+
+          {/* Desktop cart sidebar */}
+          {!isMobile && (
+            <div className="w-[280px] shrink-0 border-l border-border bg-card flex flex-col">
+              {cartContent}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Mobile floating cart bar */}
+      {isMobile && cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-[env(safe-area-inset-bottom,8px)] pt-2 bg-gradient-to-t from-background via-background to-transparent">
+          <button onClick={() => setShowMobileCart(true)}
+            className="w-full py-3.5 rounded-2xl text-[14px] font-bold text-white gradient-primary shadow-primary flex items-center justify-center gap-3">
+            <span>🛒 ตะกร้า ({totalItems})</span>
+            <span className="font-mono tabular-nums">฿{total.toLocaleString()}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile cart overlay */}
+      {isMobile && showMobileCart && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex flex-col justify-end">
+          <div className="bg-card rounded-t-3xl max-h-[85vh] flex flex-col shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+            <div className="flex items-center justify-center pt-2 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+            <button onClick={() => setShowMobileCart(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-[16px]">✕</button>
+            {cartContent}
+          </div>
+        </div>
+      )}
 
       {customizing && (
         <CustomizeModal
