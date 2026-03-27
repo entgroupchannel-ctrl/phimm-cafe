@@ -23,6 +23,7 @@ import { KitchenStationAdmin } from "./pos/admin/KitchenStationAdmin";
 import { MenuRoutingAdmin } from "./pos/admin/MenuRoutingAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Brain } from "lucide-react";
 import {
   ShoppingCart, CreditCard, Monitor, QrCode,
   ChefHat, BookOpen, Package,
