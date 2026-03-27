@@ -21,9 +21,9 @@ import { TableMapScreen } from "./pos/TableMapScreen";
 import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
 import { KitchenStationAdmin } from "./pos/admin/KitchenStationAdmin";
 import { MenuRoutingAdmin } from "./pos/admin/MenuRoutingAdmin";
+import { StockAIScreen } from "./pos/StockAIScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Brain } from "lucide-react";
 import {
   ShoppingCart, CreditCard, Monitor, QrCode,
   ChefHat, BookOpen, Package,
@@ -33,7 +33,7 @@ import {
   Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "stock-ai" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
 
 const NAV_GROUPS = [
   {
