@@ -586,7 +586,7 @@ export function StockScreen() {
                     </thead>
                     <tbody className="divide-y divide-border/40">
                       {filteredLogs.map(log => {
-                        const r = REASON_LABELS[log.reason] || { label: log.reason, color: "muted" };
+                        const mt = MOVEMENT_LABELS[log.movement_type || "manual"] || { label: log.movement_type || log.reason, color: "muted" };
                         return (
                           <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                             <td className="py-3 px-5 text-muted-foreground text-[12px]">
@@ -596,7 +596,7 @@ export function StockScreen() {
                               {log.stock_items?.name || "—"}
                             </td>
                             <td className="py-3 px-4">
-                              <POSBadge color={r.color as any}>{r.label}</POSBadge>
+                              <POSBadge color={mt.color as any}>{mt.label}</POSBadge>
                             </td>
                             <td className={cn("py-3 px-4 text-right font-mono font-bold tabular-nums",
                               Number(log.change_qty) > 0 ? "text-success" : "text-danger"
