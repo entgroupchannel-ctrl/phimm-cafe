@@ -101,7 +101,7 @@ export function StockScreen() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logReasonFilter, setLogReasonFilter] = useState("ทั้งหมด");
-  const [logItemFilter, setLogItemFilter] = useState("ทั้งหมด");
+  const [logMovementFilter, setLogMovementFilter] = useState("ทั้งหมด");
 
   // Suppliers state
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -145,7 +145,7 @@ export function StockScreen() {
 
   async function fetchLogs() {
     setLogsLoading(true);
-    const { data } = await supabase.from("stock_logs").select("*, stock_items(name, unit)").order("created_at", { ascending: false }).limit(200);
+    const { data } = await supabase.from("stock_logs").select("*, stock_items(name, unit)").order("created_at", { ascending: false }).limit(500);
     if (data) setLogs(data as any);
     setLogsLoading(false);
   }
@@ -309,10 +309,10 @@ export function StockScreen() {
 
   const filteredLogs = useMemo(() => {
     let list = logs;
-    if (logReasonFilter !== "ทั้งหมด") list = list.filter(l => l.reason === logReasonFilter);
-    if (logItemFilter !== "ทั้งหมด") list = list.filter(l => l.stock_item_id === logItemFilter);
+    if (logMovementFilter !== "ทั้งหมด") list = list.filter(l => (l.movement_type || "manual") === logMovementFilter);
+    if (logReasonFilter !== "ทั้งหมด") list = list.filter(l => l.stock_item_id === logReasonFilter);
     return list;
-  }, [logs, logReasonFilter, logItemFilter]);
+  }, [logs, logMovementFilter, logReasonFilter]);
 
   const filteredPOs = useMemo(() => {
     if (poStatusFilter === "ทั้งหมด") return pos;
