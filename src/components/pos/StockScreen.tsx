@@ -555,15 +555,15 @@ export function StockScreen() {
 
             {/* Filters */}
             <div className="flex items-center gap-3 flex-wrap">
-              <select value={logItemFilter} onChange={e => setLogItemFilter(e.target.value)}
+              <select value={logReasonFilter} onChange={e => setLogReasonFilter(e.target.value)}
                 className="h-9 px-3 rounded-xl border border-border bg-background text-foreground text-[13px]">
                 <option value="ทั้งหมด">ทุกวัตถุดิบ</option>
                 {stocks.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <select value={logReasonFilter} onChange={e => setLogReasonFilter(e.target.value)}
+              <select value={logMovementFilter} onChange={e => setLogMovementFilter(e.target.value)}
                 className="h-9 px-3 rounded-xl border border-border bg-background text-foreground text-[13px]">
                 <option value="ทั้งหมด">ทุกประเภท</option>
-                {Object.entries(REASON_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                {Object.entries(MOVEMENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
 
