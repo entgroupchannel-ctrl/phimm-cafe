@@ -31,7 +31,7 @@ import {
   Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing";
 
 const NAV_GROUPS = [
   {
