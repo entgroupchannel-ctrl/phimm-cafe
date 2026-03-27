@@ -2298,6 +2298,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      calc_expected_stock: {
+        Args: { p_from?: string; p_stock_item_id: string; p_to?: string }
+        Returns: Json
+      }
       calculate_payroll: { Args: { p_period_id: string }; Returns: undefined }
       check_low_stock_and_disable_menu: { Args: never; Returns: Json }
       earn_loyalty_points: {
