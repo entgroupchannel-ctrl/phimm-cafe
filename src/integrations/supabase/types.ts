@@ -339,6 +339,98 @@ export type Database = {
         }
         Relationships: []
       }
+      kds_devices: {
+        Row: {
+          created_at: string | null
+          device_name: string
+          device_token: string
+          device_type: string | null
+          id: string
+          is_active: boolean | null
+          last_seen_at: string | null
+          screen_mode: string | null
+          station_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_name: string
+          device_token?: string
+          device_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_seen_at?: string | null
+          screen_mode?: string | null
+          station_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_name?: string
+          device_token?: string
+          device_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_seen_at?: string | null
+          screen_mode?: string | null
+          station_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kds_devices_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kitchen_stations: {
+        Row: {
+          auto_accept: boolean | null
+          avg_prep_minutes: number | null
+          color: string | null
+          created_at: string | null
+          display_device_id: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          printer_ip: string | null
+          printer_name: string | null
+          short_name: string
+          sort_order: number | null
+        }
+        Insert: {
+          auto_accept?: boolean | null
+          avg_prep_minutes?: number | null
+          color?: string | null
+          created_at?: string | null
+          display_device_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          printer_ip?: string | null
+          printer_name?: string | null
+          short_name: string
+          sort_order?: number | null
+        }
+        Update: {
+          auto_accept?: boolean | null
+          avg_prep_minutes?: number | null
+          color?: string | null
+          created_at?: string | null
+          display_device_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          printer_ip?: string | null
+          printer_name?: string | null
+          short_name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       loyalty_tiers: {
         Row: {
           color: string | null
@@ -446,6 +538,39 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      menu_item_station_override: {
+        Row: {
+          id: string
+          menu_item_id: string | null
+          station_id: string | null
+        }
+        Insert: {
+          id?: string
+          menu_item_id?: string | null
+          station_id?: string | null
+        }
+        Update: {
+          id?: string
+          menu_item_id?: string | null
+          station_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_station_override_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: true
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_station_override_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_stations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       menu_items: {
         Row: {
@@ -585,6 +710,45 @@ export type Database = {
           },
         ]
       }
+      menu_station_routing: {
+        Row: {
+          category_id: string | null
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          station_id: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          station_id?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          station_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_station_routing_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_station_routing_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           cooking_seconds: number | null
@@ -606,6 +770,8 @@ export type Database = {
           sent_at: string | null
           served_at: string | null
           station: string | null
+          station_done_at: string | null
+          station_id: string | null
           status: Database["public"]["Enums"]["order_item_status"] | null
         }
         Insert: {
@@ -628,6 +794,8 @@ export type Database = {
           sent_at?: string | null
           served_at?: string | null
           station?: string | null
+          station_done_at?: string | null
+          station_id?: string | null
           status?: Database["public"]["Enums"]["order_item_status"] | null
         }
         Update: {
@@ -650,6 +818,8 @@ export type Database = {
           sent_at?: string | null
           served_at?: string | null
           station?: string | null
+          station_done_at?: string | null
+          station_id?: string | null
           status?: Database["public"]["Enums"]["order_item_status"] | null
         }
         Relationships: [
@@ -665,6 +835,61 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_station_status: {
+        Row: {
+          completed_at: string | null
+          id: string
+          items_done: number | null
+          items_total: number | null
+          order_id: string | null
+          started_at: string | null
+          station_id: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          items_done?: number | null
+          items_total?: number | null
+          order_id?: string | null
+          started_at?: string | null
+          station_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          items_done?: number | null
+          items_total?: number | null
+          order_id?: string | null
+          started_at?: string | null
+          station_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_station_status_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_station_status_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_stations"
             referencedColumns: ["id"]
           },
         ]
@@ -1284,42 +1509,87 @@ export type Database = {
         }
         Relationships: []
       }
+      table_zones: {
+        Row: {
+          color: string | null
+          floor: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          floor?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          floor?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       tables: {
         Row: {
           current_order_id: string | null
+          height: number | null
           id: string
           is_active: boolean | null
           label: string
+          pos_x: number | null
+          pos_y: number | null
           position_x: number | null
           position_y: number | null
           seats: number | null
+          shape: string | null
           sort_order: number | null
           status: string | null
+          width: number | null
           zone: string | null
+          zone_id: string | null
         }
         Insert: {
           current_order_id?: string | null
+          height?: number | null
           id?: string
           is_active?: boolean | null
           label: string
+          pos_x?: number | null
+          pos_y?: number | null
           position_x?: number | null
           position_y?: number | null
           seats?: number | null
+          shape?: string | null
           sort_order?: number | null
           status?: string | null
+          width?: number | null
           zone?: string | null
+          zone_id?: string | null
         }
         Update: {
           current_order_id?: string | null
+          height?: number | null
           id?: string
           is_active?: boolean | null
           label?: string
+          pos_x?: number | null
+          pos_y?: number | null
           position_x?: number | null
           position_y?: number | null
           seats?: number | null
+          shape?: string | null
           sort_order?: number | null
           status?: string | null
+          width?: number | null
           zone?: string | null
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -1373,7 +1643,9 @@ export type Database = {
       }
       generate_daily_summary: { Args: { p_date: string }; Returns: undefined }
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
+      mark_station_item_done: { Args: { p_item_id: string }; Returns: Json }
       receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
+      route_order_to_stations: { Args: { p_order_id: string }; Returns: Json }
       update_customer_tier: {
         Args: { p_customer_id: string }
         Returns: undefined

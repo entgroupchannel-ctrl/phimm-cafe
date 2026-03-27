@@ -17,6 +17,9 @@ import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { TableMapScreen } from "./pos/TableMapScreen";
+import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
+import { KitchenStationAdmin } from "./pos/admin/KitchenStationAdmin";
+import { MenuRoutingAdmin } from "./pos/admin/MenuRoutingAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -25,9 +28,10 @@ import {
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings,
   Sun, Moon, Menu, LayoutGrid, LogOut,
+  Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing";
 
 const NAV_GROUPS = [
   {
@@ -63,6 +67,14 @@ const NAV_GROUPS = [
       { key: "ai"        as Screen, icon: Bot,      label: "AI",       permission: "view_ai"         },
       { key: "nutrition" as Screen, icon: Salad,     label: "โภชนา",   permission: "view_dashboard"  },
       { key: "settings"  as Screen, icon: Settings,  label: "ตั้งค่า",  permission: "manage_settings" },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { key: "admin-tables"   as Screen, icon: Armchair, label: "โต๊ะ",        permission: "manage_settings" },
+      { key: "admin-stations" as Screen, icon: Flame,    label: "สถานีครัว",   permission: "manage_settings" },
+      { key: "admin-routing"  as Screen, icon: Route,    label: "Routing",     permission: "manage_settings" },
     ],
   },
 ];
@@ -309,6 +321,9 @@ export function POSApp() {
         {screen === "omni"      && <OmnichannelScreen />}
         {screen === "qr"        && <QRGeneratorScreen />}
         {screen === "settings"  && <SettingsScreen />}
+        {screen === "admin-tables"   && <TableLayoutAdmin />}
+        {screen === "admin-stations" && <KitchenStationAdmin />}
+        {screen === "admin-routing"  && <MenuRoutingAdmin />}
       </main>
     </div>
   );
