@@ -105,6 +105,14 @@ function formatTime(secs: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+// ── Urgency helpers ───────────────────────────────────────
+function getUrgency(elapsedMins: number) {
+  if (elapsedMins >= 15) return { border: "#ef4444", label: "ด่วนมาก!", bg: "bg-[#ef4444]", text: "text-[#ef4444]" };
+  if (elapsedMins >= 10) return { border: "#f97316", label: "เร่งด่วน", bg: "bg-[#f97316]", text: "text-[#f97316]" };
+  if (elapsedMins >= 5)  return { border: "#f59e0b", label: "รอนาน", bg: "bg-[#f59e0b]", text: "text-[#f59e0b]" };
+  return { border: "#22c55e", label: "ปกติ", bg: "bg-[#22c55e]", text: "text-[#22c55e]" };
+}
+
 // ── Order Card ────────────────────────────────────────────
 function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
   order: KDSOrder;
@@ -119,24 +127,19 @@ function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
 
   const elapsed = order.sentAt ? Math.max(0, Math.floor((now - new Date(order.sentAt).getTime()) / 1000)) : 0;
   const elapsedMins = elapsed / 60;
-  const isLate = elapsedMins > 10 && !isReady;
 
-  const cardBorder = isReady
-    ? "border-success/60 shadow-[0_0_20px_hsl(var(--success)/0.12)]"
-    : isNew
-    ? "border-danger/60 shadow-[0_0_20px_hsl(var(--danger)/0.15)] animate-pulse"
-    : isLate
-    ? "border-danger/50"
-    : "border-border";
+  const urgency = isReady ? { border: "#22c55e", label: "พร้อมเสิร์ฟ", bg: "bg-[#22c55e]", text: "text-[#22c55e]" } : getUrgency(elapsedMins);
 
-  const headerBg = isReady ? "bg-success/8" : isNew ? "bg-danger/8" : "bg-card";
   const readyCount = order.items.filter(i => i.status === "ready" || i.status === "served").length;
   const allReady = readyCount === order.items.length;
 
   return (
-    <div className={cn("bg-card border-2 rounded-2xl overflow-hidden transition-all duration-200", cardBorder)}>
+    <div
+      className="bg-card border border-border rounded-2xl overflow-hidden transition-all duration-200"
+      style={{ borderLeftWidth: 4, borderLeftColor: urgency.border }}
+    >
       {/* Header */}
-      <div className={cn("px-4 py-2.5 border-b border-border flex items-center justify-between", headerBg)}>
+      <div className="px-4 py-2.5 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono font-black text-[17px] text-foreground">{order.orderNumber}</span>
           {order.delivery && (
@@ -144,16 +147,12 @@ function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
               🛵 {order.channel || "Delivery"}
             </span>
           )}
-          {isLate && (
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-danger/15 text-danger border border-danger/40 animate-pulse">
-              🔴 ล่าช้า!
-            </span>
-          )}
+          {/* Urgency badge */}
+          <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold text-white", urgency.bg)}>
+            {urgency.label}
+          </span>
         </div>
-        <span className={cn(
-          "font-mono text-[15px] font-extrabold tabular-nums",
-          isReady ? "text-success" : elapsedMins > 10 ? "text-danger" : elapsedMins > 5 ? "text-warning" : "text-foreground"
-        )}>
+        <span className={cn("font-mono text-[15px] font-extrabold tabular-nums", urgency.text)}>
           ⏱ {formatTime(elapsed)}
         </span>
       </div>
@@ -196,7 +195,7 @@ function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
             const diff = Math.max(0, Math.floor((now - new Date(item.cookingStartedAt).getTime()) / 1000));
             cookingTimer = formatTime(diff);
             const mins = diff / 60;
-            if (mins > 10) timerColor = "text-danger animate-pulse";
+            if (mins > 10) timerColor = "text-danger";
             else if (mins > 5) timerColor = "text-warning";
           }
 
@@ -272,10 +271,7 @@ function OrderCard({ order, now, onBumpItem, onHandoff, soundOn }: {
         )}
         {allReady && (
           <button onClick={() => onHandoff(order)}
-            className={cn(
-              "flex-1 min-h-[56px] py-3 rounded-xl text-[16px] font-extrabold text-white bg-[hsl(142_64%_38%)] shadow-[0_4px_16px_hsl(142_64%_38%/0.35)] hover:bg-[hsl(142_64%_34%)] transition-all",
-              isReady && "animate-pulse"
-            )}>
+            className="flex-1 min-h-[56px] py-3 rounded-xl text-[16px] font-extrabold text-white bg-[hsl(142_64%_38%)] shadow-[0_4px_16px_hsl(142_64%_38%/0.35)] hover:bg-[hsl(142_64%_34%)] transition-all">
             🍽 ส่งมอบ
           </button>
         )}
