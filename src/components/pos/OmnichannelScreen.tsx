@@ -279,13 +279,13 @@ export function OmnichannelScreen() {
                       </div>
                       <div className="px-4 py-2.5 border-t border-border/40 flex gap-2">
                         {order.status === "open" && (
-                          <Button size="sm" className="flex-1" onClick={() => updateOrderStatus(order.id, "confirmed")}>✅ Accept</Button>
+                          <Button size="sm" className="flex-1" onClick={() => updateOrderStatus(order.id, "cooking")}>✅ Accept & Cook</Button>
                         )}
-                        {order.status === "confirmed" && (
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => updateOrderStatus(order.id, "preparing")}>👨‍🍳 Preparing</Button>
-                        )}
-                        {order.status === "preparing" && (
+                        {order.status === "cooking" && (
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => updateOrderStatus(order.id, "ready")}>📦 Ready</Button>
+                        )}
+                        {order.status === "ready" && (
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => updateOrderStatus(order.id, "served")}>🍽 Picked Up</Button>
                         )}
                       </div>
                     </div>
