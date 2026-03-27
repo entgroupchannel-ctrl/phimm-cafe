@@ -347,6 +347,26 @@ export function KDSScreen() {
   const prevCountRef = useRef(0);
   const { toast } = useToast();
 
+  // Multi-station support
+  const [kdsMode, setKdsMode] = useState<"loading" | "select" | "all" | "station" | "expeditor">("loading");
+  const [dbStations, setDbStations] = useState<KitchenStation[]>([]);
+  const [activeStationId, setActiveStationId] = useState<string | null>(null);
+  const [stationPendingCounts, setStationPendingCounts] = useState<Record<string, number>>({});
+  const [expeditorData, setExpeditorData] = useState<Array<{ orderId: string; orderNumber: string; table: string; stations: Array<{ stationId: string; name: string; icon: string; color: string; total: number; done: number }> }>>([]);
+
+  // On mount: check if DB stations exist
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("kitchen_stations").select("*").eq("is_active", true).order("sort_order");
+      if (data && data.length > 0) {
+        setDbStations(data as any);
+        setKdsMode("select");
+      } else {
+        setKdsMode("all");
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
