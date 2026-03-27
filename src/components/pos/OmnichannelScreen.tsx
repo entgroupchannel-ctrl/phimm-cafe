@@ -34,13 +34,12 @@ function playDeliveryChime() {
 
 const CHANNEL_COLORS: Record<string, string> = {
   line_man: "#06C755", grab: "#00B14F", robinhood: "#6B21A8",
-  shopee_food: "#EE4D2D", walk_in: "#818CF8", kiosk: "#0891B2", qr_order: "#D946EF",
+  shopee: "#EE4D2D", walk_in: "#818CF8", kiosk: "#0891B2", qr_order: "#D946EF",
 };
 const CHANNEL_ICONS: Record<string, string> = {
-  line_man: "💚", grab: "🟢", robinhood: "🟣", shopee_food: "🟠",
+  line_man: "💚", grab: "🟢", robinhood: "🟣", shopee: "🟠",
 };
-const DELIVERY_CHANNELS = ["line_man", "grab", "robinhood", "shopee_food"] as const;
-type DeliveryChannel = typeof DELIVERY_CHANNELS[number];
+const DELIVERY_CHANNELS = ["line_man", "grab", "robinhood", "shopee"] as const;
 
 type OmniTab = "orders" | "config" | "analytics";
 
@@ -159,7 +158,7 @@ export function OmnichannelScreen() {
     } catch { /* ignore */ }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: "open" | "cooking" | "ready" | "paid" | "cancelled" | "sent" | "served") => {
     try {
       const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
       if (error) throw error;
