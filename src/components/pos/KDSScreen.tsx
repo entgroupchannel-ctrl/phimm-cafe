@@ -497,7 +497,10 @@ export function KDSScreen() {
     fetchStats();
   }
 
-  const filtered = station === "all" ? orders : orders.filter(o => o.items.some(it => it.station === station));
+  // Filter: in station mode with DB station, filter by station_id; otherwise use legacy text station filter
+  const filtered = activeStationId
+    ? orders.map(o => ({ ...o, items: o.items.filter(it => it.stationId === activeStationId) })).filter(o => o.items.length > 0)
+    : station === "all" ? orders : orders.filter(o => o.items.some(it => it.station === station));
   const sorted = [...filtered].sort((a, b) => {
     if (a.status === "new" && b.status !== "new") return -1;
     if (a.status !== "new" && b.status === "new") return 1;
