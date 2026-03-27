@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CartItem } from "./OrderScreen";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentScreenProps {
@@ -17,6 +18,7 @@ const METHODS = [
 ];
 
 export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScreenProps) {
+  const isMobile = useIsMobile();
   const [method, setMethod] = useState("promptpay");
   const [paid, setPaid] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
@@ -136,7 +138,7 @@ export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScre
   if (paid) {
     return (
       <div className="flex flex-1 items-center justify-center bg-background">
-        <div className="w-[420px] bg-[hsl(var(--surface))] rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.07),0_16px_40px_rgba(0,0,0,0.07)] p-10 text-center border border-border animate-scale-in">
+        <div className={cn("bg-[hsl(var(--surface))] rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.07),0_16px_40px_rgba(0,0,0,0.07)] p-10 text-center border border-border animate-scale-in", isMobile ? "w-[90vw] max-w-[380px]" : "w-[420px]")}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center text-4xl mx-auto mb-5"
             style={{ background: "hsl(var(--success)/0.1)", boxShadow: "0 0 32px hsl(var(--success)/0.2)" }}>
             ✅
@@ -156,12 +158,12 @@ export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScre
     );
   }
 
-  // ── Main layout: 2 columns ──────────────────────────────────
+  // ── Main layout: 2 columns (desktop) / stacked (mobile) ──────
   return (
-    <div className="flex flex-1 overflow-hidden bg-background">
+    <div className={cn("flex flex-1 overflow-hidden bg-background", isMobile ? "flex-col overflow-y-auto" : "flex-row")}>
 
       {/* ─── LEFT: Order summary + customer ─────────────────── */}
-      <div className="w-[380px] shrink-0 flex flex-col border-r border-border bg-[hsl(var(--surface))]">
+      <div className={cn("flex flex-col bg-[hsl(var(--surface))]", isMobile ? "w-full shrink-0" : "w-[380px] shrink-0 border-r border-border")}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-border/60">
           <h2 className="text-[15px] font-bold text-foreground">🧾 สรุปออเดอร์</h2>
@@ -169,7 +171,7 @@ export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScre
         </div>
 
         {/* Items list */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className={cn(isMobile ? "max-h-[30vh] overflow-y-auto scrollbar-hide" : "flex-1 overflow-y-auto scrollbar-hide")}>
           {loading ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground text-[13px]">กำลังโหลด...</div>
           ) : (
@@ -253,8 +255,8 @@ export function PaymentScreen({ cart, orderId, tableId, onSuccess }: PaymentScre
       </div>
 
       {/* ─── RIGHT: Payment method + confirm ───────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col items-center justify-center">
+      <div className={cn("flex flex-col min-w-0", isMobile ? "w-full" : "flex-1 overflow-hidden")}>
+        <div className={cn("overflow-y-auto scrollbar-hide flex flex-col items-center justify-center", isMobile ? "p-4" : "flex-1 p-6")}>
           <div className="w-full max-w-[400px] space-y-5">
 
             {/* Payment methods */}
