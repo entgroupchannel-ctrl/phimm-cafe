@@ -27,7 +27,7 @@ import {
   ShoppingCart, CreditCard, Monitor, QrCode,
   ChefHat, BookOpen, Package,
   Users, UserCog, Globe, LayoutDashboard,
-  Bot, Salad, Settings,
+  Bot, Salad, Settings, DollarSign,
   Sun, Moon, Menu, LayoutGrid, LogOut,
   Armchair, Flame, Route,
 } from "lucide-react";
@@ -326,6 +326,7 @@ export function POSApp() {
         {screen === "admin-tables"   && <TableLayoutAdmin />}
         {screen === "admin-stations" && <KitchenStationAdmin />}
         {screen === "admin-routing"  && <MenuRoutingAdmin />}
+        {screen === "payroll"        && <PayrollScreen />}
       </main>
     </div>
   );
