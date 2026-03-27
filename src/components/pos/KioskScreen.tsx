@@ -135,27 +135,34 @@ function CustomizeModal({
     });
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-3xl w-full max-w-2xl shadow-[0_24px_60px_rgba(0,0,0,0.15)] overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+      <div className={cn("bg-card border border-border rounded-3xl w-full shadow-[0_24px_60px_rgba(0,0,0,0.15)] overflow-hidden", isMobile ? "max-w-full mx-2 max-h-[90vh] flex flex-col" : "max-w-2xl")}>
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
           <button onClick={onClose} className="w-9 h-9 rounded-xl border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-[18px]">←</button>
           <div className="text-[17px] font-bold text-foreground">ปรับแต่ง: {item.name}</div>
         </div>
 
-        <div className="flex gap-0 max-h-[70vh] overflow-hidden">
-          <div className="w-52 shrink-0 p-6 border-r border-border flex flex-col items-center text-center bg-background/50">
-            <div className="text-[64px] leading-none mb-3">{item.img}</div>
-            <div className="text-[15px] font-extrabold text-foreground mb-1">{item.name}</div>
-            <div className="text-[12px] text-muted-foreground mb-3">{item.desc}</div>
-            <div className="flex flex-wrap gap-1 justify-center mb-3">
-              {item.cal && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>}
-              {item.allergens.map(a => (
-                <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">⚠️ {a}</span>
-              ))}
+        <div className={cn("flex gap-0 overflow-hidden", isMobile ? "flex-col flex-1 min-h-0" : "max-h-[70vh]")}>
+          <div className={cn("shrink-0 border-border flex flex-col items-center text-center bg-background/50",
+            isMobile ? "px-4 py-3 flex-row gap-3 border-b" : "w-52 p-6 border-r")}>
+            <div className={cn("leading-none", isMobile ? "text-[40px]" : "text-[64px] mb-3")}>{item.img}</div>
+            <div className={cn(isMobile ? "text-left flex-1 min-w-0" : "")}>
+              <div className="text-[15px] font-extrabold text-foreground mb-1">{item.name}</div>
+              {!isMobile && <div className="text-[12px] text-muted-foreground mb-3">{item.desc}</div>}
+              <div className={cn("flex flex-wrap gap-1", isMobile ? "" : "justify-center mb-3")}>
+                {item.cal && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">🔥 {item.cal} cal</span>}
+                {item.allergens.map(a => (
+                  <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger/10 text-danger border border-danger/20">⚠️ {a}</span>
+                ))}
+              </div>
             </div>
-            <div className="font-mono text-[24px] font-extrabold text-primary">฿{total}</div>
-            {priceAdd > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{priceAdd}</div>}
+            <div className="shrink-0">
+              <div className="font-mono text-[24px] font-extrabold text-primary">฿{total}</div>
+              {priceAdd > 0 && <div className="text-[11px] text-muted-foreground">รวม Add-ons +฿{priceAdd}</div>}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -218,7 +225,7 @@ function CustomizeModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-border">
+        <div className="px-6 py-4 border-t border-border shrink-0">
           <button onClick={() => {
             onAdd({ id: item.id, name: item.name, price: item.price, img: item.img, cat: item.cat, qty, note, options: selectedOptions, optionsText, priceAdd });
             onClose();
