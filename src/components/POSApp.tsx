@@ -17,6 +17,9 @@ import { KioskScreen } from "./pos/KioskScreen";
 import { OmnichannelScreen } from "./pos/OmnichannelScreen";
 import { QRGeneratorScreen } from "./pos/QRGeneratorScreen";
 import { TableMapScreen } from "./pos/TableMapScreen";
+import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
+import { KitchenStationAdmin } from "./pos/admin/KitchenStationAdmin";
+import { MenuRoutingAdmin } from "./pos/admin/MenuRoutingAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
