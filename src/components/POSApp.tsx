@@ -321,6 +321,9 @@ export function POSApp() {
         {screen === "omni"      && <OmnichannelScreen />}
         {screen === "qr"        && <QRGeneratorScreen />}
         {screen === "settings"  && <SettingsScreen />}
+        {screen === "admin-tables"   && <TableLayoutAdmin />}
+        {screen === "admin-stations" && <KitchenStationAdmin />}
+        {screen === "admin-routing"  && <MenuRoutingAdmin />}
       </main>
     </div>
   );
