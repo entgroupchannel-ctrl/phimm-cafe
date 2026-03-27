@@ -21,18 +21,19 @@ import { TableMapScreen } from "./pos/TableMapScreen";
 import { TableLayoutAdmin } from "./pos/admin/TableLayoutAdmin";
 import { KitchenStationAdmin } from "./pos/admin/KitchenStationAdmin";
 import { MenuRoutingAdmin } from "./pos/admin/MenuRoutingAdmin";
+import { StockAIScreen } from "./pos/StockAIScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   ShoppingCart, CreditCard, Monitor, QrCode,
-  ChefHat, BookOpen, Package,
+  ChefHat, BookOpen, Package, Brain,
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings, DollarSign,
   Sun, Moon, Menu, LayoutGrid, LogOut,
   Armchair, Flame, Route,
 } from "lucide-react";
 
-type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
+type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "stock-ai" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings" | "admin-tables" | "admin-stations" | "admin-routing" | "payroll";
 
 const NAV_GROUPS = [
   {
@@ -67,6 +68,7 @@ const NAV_GROUPS = [
     label: "เครื่องมือ",
     items: [
       { key: "ai"        as Screen, icon: Bot,      label: "AI",       permission: "view_ai"         },
+      { key: "stock-ai"  as Screen, icon: Brain,    label: "AI สต๊อก", permission: "manage_stock"    },
       { key: "nutrition" as Screen, icon: Salad,     label: "โภชนา",   permission: "view_dashboard"  },
       { key: "settings"  as Screen, icon: Settings,  label: "ตั้งค่า",  permission: "manage_settings" },
     ],
@@ -327,6 +329,7 @@ export function POSApp() {
         {screen === "admin-stations" && <KitchenStationAdmin />}
         {screen === "admin-routing"  && <MenuRoutingAdmin />}
         {screen === "payroll"        && <PayrollScreen />}
+        {screen === "stock-ai"       && <StockAIScreen />}
       </main>
     </div>
   );

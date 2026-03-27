@@ -96,6 +96,50 @@ export type Database = {
           },
         ]
       }
+      ai_stock_insights: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string | null
+          data: Json
+          id: string
+          insight_type: string
+          is_acknowledged: boolean | null
+          severity: string | null
+          stock_item_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          data?: Json
+          id?: string
+          insight_type: string
+          is_acknowledged?: boolean | null
+          severity?: string | null
+          stock_item_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          data?: Json
+          id?: string
+          insight_type?: string
+          is_acknowledged?: boolean | null
+          severity?: string | null
+          stock_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_stock_insights_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allergen_types: {
         Row: {
           icon: string | null
@@ -1858,6 +1902,90 @@ export type Database = {
           },
         ]
       }
+      stock_count_items: {
+        Row: {
+          actual_qty: number | null
+          diff_value: number | null
+          difference: number | null
+          id: string
+          note: string | null
+          session_id: string | null
+          stock_item_id: string | null
+          system_qty: number
+        }
+        Insert: {
+          actual_qty?: number | null
+          diff_value?: number | null
+          difference?: number | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          stock_item_id?: string | null
+          system_qty: number
+        }
+        Update: {
+          actual_qty?: number | null
+          diff_value?: number | null
+          difference?: number | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          stock_item_id?: string | null
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_count_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "stock_count_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_items_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_count_sessions: {
+        Row: {
+          completed_at: string | null
+          counted_by: string | null
+          id: string
+          items_with_diff: number | null
+          note: string | null
+          started_at: string | null
+          status: string | null
+          total_diff_value: number | null
+          total_items: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          counted_by?: string | null
+          id?: string
+          items_with_diff?: number | null
+          note?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_diff_value?: number | null
+          total_items?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          counted_by?: string | null
+          id?: string
+          items_with_diff?: number | null
+          note?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_diff_value?: number | null
+          total_items?: number | null
+        }
+        Relationships: []
+      }
       stock_items: {
         Row: {
           category: string | null
@@ -1865,9 +1993,12 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_restocked_at: string | null
+          lead_time_days: number | null
           min_threshold: number | null
           name: string
           qty: number
+          safety_factor: number | null
+          shelf_life_days: number | null
           supplier: string | null
           supplier_id: string | null
           unit: string
@@ -1879,9 +2010,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_restocked_at?: string | null
+          lead_time_days?: number | null
           min_threshold?: number | null
           name: string
           qty?: number
+          safety_factor?: number | null
+          shelf_life_days?: number | null
           supplier?: string | null
           supplier_id?: string | null
           unit: string
@@ -1893,9 +2027,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_restocked_at?: string | null
+          lead_time_days?: number | null
           min_threshold?: number | null
           name?: string
           qty?: number
+          safety_factor?: number | null
+          shelf_life_days?: number | null
           supplier?: string | null
           supplier_id?: string | null
           unit?: string
@@ -2161,17 +2298,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      calc_expected_stock: {
+        Args: { p_from?: string; p_stock_item_id: string; p_to?: string }
+        Returns: Json
+      }
       calculate_payroll: { Args: { p_period_id: string }; Returns: undefined }
       check_low_stock_and_disable_menu: { Args: never; Returns: Json }
       earn_loyalty_points: {
         Args: { p_amount: number; p_customer_id: string; p_order_id: string }
         Returns: number
       }
+      forecast_stock_demand: {
+        Args: { p_days?: number; p_stock_item_id: string }
+        Returns: Json
+      }
       generate_daily_summary: { Args: { p_date: string }; Returns: undefined }
       get_role_permissions: { Args: { p_role_id: string }; Returns: string[] }
       mark_station_item_done: { Args: { p_item_id: string }; Returns: Json }
       receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
       route_order_to_stations: { Args: { p_order_id: string }; Returns: Json }
+      run_stock_ai_analysis: { Args: never; Returns: Json }
       update_customer_tier: {
         Args: { p_customer_id: string }
         Returns: undefined
