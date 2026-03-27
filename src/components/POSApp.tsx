@@ -58,6 +58,7 @@ const NAV_GROUPS = [
     items: [
       { key: "crm"       as Screen, icon: Users,           label: "ลูกค้า",    permission: "view_crm"       },
       { key: "staff"     as Screen, icon: UserCog,          label: "พนักงาน",   permission: "manage_staff"   },
+      { key: "payroll"   as Screen, icon: DollarSign,       label: "Payroll",   permission: "manage_settings" },
       { key: "omni"      as Screen, icon: Globe,            label: "Omni",      permission: "view_omni"      },
       { key: "dashboard" as Screen, icon: LayoutDashboard,  label: "Dashboard", permission: "view_dashboard" },
     ],
