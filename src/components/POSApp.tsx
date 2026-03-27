@@ -28,6 +28,7 @@ import {
   Users, UserCog, Globe, LayoutDashboard,
   Bot, Salad, Settings,
   Sun, Moon, Menu, LayoutGrid, LogOut,
+  Armchair, Flame, Route,
 } from "lucide-react";
 
 type Screen = "tables" | "order" | "payment" | "kds" | "menu" | "stock" | "crm" | "staff" | "dashboard" | "ai" | "nutrition" | "kiosk" | "omni" | "qr" | "settings";
