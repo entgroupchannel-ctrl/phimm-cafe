@@ -59,6 +59,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
   const [categories, setCategories] = useState<{ key: string; label: string }[]>([]);
   const [servedItems, setServedItems] = useState<ServedItem[]>([]);
   const [sending, setSending] = useState(false);
+  const [stockStatus, setStockStatus] = useState<Record<string, { isLow: boolean; isOut: boolean }>>({});
   const { toast } = useToast();
 
   // Customization modal state
@@ -68,7 +69,7 @@ export function OrderScreen({ cart, setCart, onPay, onBack, tableLabel = "3", ta
   const [itemNote, setItemNote] = useState("");
   const [itemQty, setItemQty] = useState(1);
 
-  useEffect(() => { fetchMenu(); }, []);
+  useEffect(() => { fetchMenu(); fetchStockStatus(); }, []);
 
   async function fetchMenu() {
     const [menuRes, catRes] = await Promise.all([
