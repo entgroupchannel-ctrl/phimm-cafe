@@ -10,6 +10,7 @@ interface KDSItem {
   name: string;
   qty: number;
   station: string | null;
+  stationId: string | null;
   note: string | null;
   status: string;
   optionsText: string | null;
@@ -28,7 +29,17 @@ interface KDSOrder {
   status: "new" | "cooking" | "ready";
 }
 
-const STATIONS = [
+interface KitchenStation {
+  id: string;
+  name: string;
+  short_name: string;
+  icon: string;
+  color: string;
+  is_active: boolean;
+}
+
+// Legacy stations for backward compat when no DB stations
+const LEGACY_STATIONS = [
   { id: "all",     label: "ทั้งหมด",     icon: "📋", colorVar: "primary" },
   { id: "wok",     label: "เตาผัด",     icon: "🍳", colorVar: "warning"  },
   { id: "soup",    label: "ต้ม/แกง",    icon: "🍲", colorVar: "danger"   },
