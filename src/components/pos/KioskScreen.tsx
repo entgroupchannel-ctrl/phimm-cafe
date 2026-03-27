@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import phimmLogo from "@/assets/phimm-logo.png";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ─────────────────────────────────────────────────
 interface KioskMenuItem {
